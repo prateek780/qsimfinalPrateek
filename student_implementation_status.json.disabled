@@ -1,13 +1,1 @@
-{
-  "student_implementation_ready": true,
-  "protocol": "bb84",
-  "implementation_type": "StudentImplementationBridge",
-  "methods_implemented": [
-    "bb84_send_qubits",
-    "process_received_qbit",
-    "bb84_reconcile_bases",
-    "bb84_estimate_error_rate"
-  ],
-  "binder_deployment": true,
-  "has_valid_implementation": true
-}
+{"student_implementation_ready": true, "implementation_type": "StudentImplementationBridge", "protocol": "BB84", "methods_implemented": ["bb84_send_qubits", "process_received_qbit", "bb84_reconcile_bases", "bb84_estimate_error_rate"], "ui_logging_enabled": true, "has_valid_implementation": true}
