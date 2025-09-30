@@ -74,17 +74,9 @@ This is a **quantum networking simulation platform** that allows you to:
 
 ### Step 1: Clone/Download the Repository
 
-```bash
-cd qsimforb92
-```
+git clone https://github.com/prateek780/qsimnotebookfinal
 
-### Step 2: Install Python Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### Step 3: Start Docker Backend
+### Step 2: Start Docker Backend
 
 **Important:** Make sure Docker Desktop is running first!
 
@@ -101,15 +93,7 @@ This will:
 
 **Wait for:** "All services started successfully" message
 
-### Step 4: Verify Backend is Running
 
-Open a browser and visit:
-- **Main UI:** http://localhost:8001
-- **API Health:** http://localhost:8001/api/health
-
-If you see the UI, you're ready to go!
-
----
 
 ## Running the Simulation
 
@@ -759,7 +743,6 @@ A: Both protocols are active. Run `python switch_to_bb84.py` and restart Docker.
 
 ---
 
-**Happy Quantum Networking! 🚀⚛️**
 
 For issues or questions, check the troubleshooting section or review the protocol switching guide.
 
