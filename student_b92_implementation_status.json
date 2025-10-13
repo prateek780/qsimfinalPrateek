@@ -1,1 +1,0 @@
-{"student_implementation_ready": true, "implementation_type": "StudentImplementationBridge", "protocol": "B92", "methods_implemented": ["b92_send_qubits", "b92_process_received_qbit", "b92_sifting", "b92_estimate_error_rate"], "ui_logging_enabled": true, "has_valid_implementation": true}

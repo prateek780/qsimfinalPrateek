@@ -1,6 +1,8 @@
 -r ai_agent/requirements.txt
 networkx==3.4.2
 qutip==5.0.4
+watchdog==6.0.0
+firebase-admin==6.5.0
 
 # Server requirements
 fastapi[standard]==0.115.12

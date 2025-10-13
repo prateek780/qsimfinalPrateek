@@ -51,6 +51,7 @@ class StudentQuantumHost:
         self.random_bits = []
         self.measurement_bases = []
         self.quantum_states = []
+        self.num_qubits=100
 
 
         for _ in range(num_qubits):
@@ -198,7 +199,7 @@ def main():
 
 
     print("STEP 2: Quantum Transmission Phase")
-    num_qubits = 15
+    num_qubits = 100  # Students: Change this number to use more/fewer qubits!
     quantum_states = alice.bb84_send_qubits(num_qubits)
     print()
 
@@ -219,8 +220,9 @@ def main():
     print("STEP 5: Error Rate Estimation Phase")
     if len(matching_indices) > 5:
         sample_positions = matching_indices[:5]
-        alice.bb84_estimate_error_rate(sample_positions, [bob.measurement_outcomes[i] for i in range(5)])
-        bob.bb84_estimate_error_rate(sample_positions, [alice.random_bits[i] for i in range(5)])
+        alice.bb84_estimate_error_rate(sample_positions, [bob.measurement_outcomes[i] for i in sample_positions])
+        bob.bb84_estimate_error_rate(sample_positions, [alice.random_bits[i] for i in sample_positions])
+
     else:
         print("Not enough matching bases for error rate estimation")
     print()
