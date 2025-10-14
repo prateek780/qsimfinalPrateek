@@ -17,13 +17,11 @@ from config.config import get_config
 class MyCelery(Celery):
 
     def on_init(self):
-        print("Initializing system...")
         asyncio.run(Coordinator().initialize_system())
         
 
 redis_config = get_config().redis
 redis_uri = f'redis://{redis_config.username}:{redis_config.password.get_secret_value()}@{redis_config.host}:{redis_config.port}/{redis_config.db}'
-print(redis_uri)
 # Configure Celery (adjust broker/backend as needed)
 celery_app = MyCelery('simulation_tasks')
 celery_app.conf.update(

@@ -17,9 +17,6 @@ class MultiModelChatOpenAI(ChatOpenAI):
     def add_sub_model(self, name: str, model: Union[ChatOpenAI, BaseChatModel]):
         """Add a sub-model to the chat OpenAI instance."""
         self.sub_models[name] = model
-        print(
-            f"Added sub-model '{name}' with ID {getattr(model, 'model_name', getattr(model, 'model', 'Unknown Model'))}"
-        )
 
     def use(self, *model_order: str):
         """Use a sub-model by name."""

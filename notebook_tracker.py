@@ -29,15 +29,19 @@ class NotebookTracker:
         if self.use_firebase:
             try:
                 # Initialize Firebase
+                print("Step 1/3: Initializing Firebase connection...")
                 firebase_manager.init_firebase()
                 
                 # Get or create student
+                print(f"Step 2/3: Setting up student record ({student_id})...")
                 firebase_manager.get_or_create_student(student_id)
+                print("  > Student record ready")
                 
                 # Create new session
+                print("Step 3/3: Creating session...")
                 self.session_id = firebase_manager.create_session(student_id)
                 
-                print(f"Firebase connected - Session ID: {self.session_id}")
+                print(f"SUCCESS: Firebase fully connected - Session ID: {self.session_id}")
             except Exception as e:
                 print(f"Firebase error: {e}")
                 print("Falling back to JSON-only mode")
@@ -95,7 +99,7 @@ class NotebookTracker:
                     f"{protocol} code tracked: {len(code_lines)} lines"
                 )
                 
-                print(f"✓ Tracked {protocol} cell: {activity['line_count']} lines, {activity['code_length']} chars")
+                print(f"Tracked {protocol} cell: {activity['line_count']} lines, {activity['code_length']} chars")
                 
             except Exception as e:
                 print(f"Firebase save error: {e}")

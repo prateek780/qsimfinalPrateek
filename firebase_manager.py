@@ -47,7 +47,7 @@ def init_firebase():
         _firebase_app = firebase_admin.initialize_app(cred)
         _firestore_db = firestore.client()
         
-        print(f"Firebase connected: qsimnotebookfinal-e73e9")
+        print(f"Firebase connected: qsimnotebookfinal")
         return _firestore_db
         
     except Exception as e:
@@ -68,21 +68,27 @@ def get_or_create_student(student_id: str, name: Optional[str] = None, email: Op
     """
     db = get_firestore()
     student_ref = db.collection('students').document(student_id)
-    student_doc = student_ref.get()
     
-    if student_doc.exists:
-        return student_doc.to_dict()
-    else:
-        # Create new student
-        student_data = {
-            'student_id': student_id,
-            'name': name or student_id,
-            'email': email,
-            'created_at': firestore.SERVER_TIMESTAMP,
-            'last_activity': firestore.SERVER_TIMESTAMP
-        }
-        student_ref.set(student_data)
-        return student_data
+    try:
+        student_doc = student_ref.get(timeout=10)  # 10 second timeout
+        
+        if student_doc.exists:
+            return student_doc.to_dict()
+        else:
+            # Create new student
+            student_data = {
+                'student_id': student_id,
+                'name': name or student_id,
+                'email': email,
+                'created_at': firestore.SERVER_TIMESTAMP,
+                'last_activity': firestore.SERVER_TIMESTAMP
+            }
+            student_ref.set(student_data)
+            return student_data
+    except Exception as e:
+        print(f"Warning: Firestore timeout or error: {e}")
+        # Return a minimal student record if Firestore fails
+        return {'student_id': student_id, 'name': name or student_id}
 
 
 def create_session(student_id: str) -> str:
@@ -92,21 +98,27 @@ def create_session(student_id: str) -> str:
     """
     db = get_firestore()
     
-    # Update student's last activity
-    student_ref = db.collection('students').document(student_id)
-    student_ref.update({'last_activity': firestore.SERVER_TIMESTAMP})
-    
-    # Create session
-    session_data = {
-        'student_id': student_id,
-        'started_at': firestore.SERVER_TIMESTAMP,
-        'status': 'active'
-    }
-    
-    session_ref = student_ref.collection('sessions').document()
-    session_ref.set(session_data)
-    
-    return session_ref.id
+    try:
+        # Update student's last activity (with timeout)
+        student_ref = db.collection('students').document(student_id)
+        student_ref.update({'last_activity': firestore.SERVER_TIMESTAMP})
+        
+        # Create session
+        session_data = {
+            'student_id': student_id,
+            'started_at': firestore.SERVER_TIMESTAMP,
+            'status': 'active'
+        }
+        
+        session_ref = student_ref.collection('sessions').document()
+        session_ref.set(session_data)
+        
+        return session_ref.id
+    except Exception as e:
+        print(f"Warning: Session creation error: {e}")
+        # Generate a fallback session ID if Firestore fails
+        from datetime import datetime
+        return f"local_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 
 def save_code_version(

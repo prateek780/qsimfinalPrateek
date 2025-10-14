@@ -22,12 +22,7 @@ os.environ["DISABLE_EMBEDDING"] = "1"
 os.environ["DISABLE_AI_FEATURES"] = "1"
 os.environ["DISABLE_REDIS_LOGGING"] = "1"
 
-print("🔧 REDIS ENABLED - Topology storage available")
-print("🔧 EMBEDDING DISABLED - No memory issues")
-print("🔧 AI FEATURES DISABLED - Focus on BB84 simulation")
-print("🔧 REDIS LOGGING DISABLED - Prevent memory overflow")
-
-# Try to clear Redis memory if it's full
+# Try to clear Redis memory if it's full (silent cleanup)
 try:
     import redis
     r = redis.Redis(
@@ -42,13 +37,8 @@ try:
     log_keys = r.keys("network-sim:log:*")
     if log_keys:
         r.delete(*log_keys)
-        print(f"🧹 Cleared {len(log_keys)} log entries from Redis to free memory")
-    else:
-        print("✅ Redis memory is clean")
 except Exception as e:
-    print(f"⚠️ Could not clear Redis memory: {e}")
-
-print(f"Redis configured: {os.environ['REDIS_HOST']}:{os.environ['REDIS_PORT']}")
+    pass  # Silent fail
 os.environ["GOOGLE_API_KEY"] = "Use your API key here"
 os.environ["OPENAI_API_KEY"] = os.environ["GOOGLE_API_KEY"]
 os.environ["LANGCHAIN_API_KEY"] = os.environ["GOOGLE_API_KEY"]
@@ -71,10 +61,6 @@ app = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize Redis and AI agents for full functionality
-    print("🚀 Starting backend with full AI agent and Redis support...")
-    print("   Initializing Redis and AI agents for log summarization")
-    
     # Check if student implementation is ready
     try:
         import json
@@ -82,18 +68,16 @@ async def lifespan(app: FastAPI):
         if os.path.exists(status_file):
             with open(status_file, 'r') as f:
                 status = json.load(f)
+            protocol = status.get("current_protocol", "BB84").upper()
             if status.get("student_implementation_ready", False):
-                print("✅ Student BB84 implementation detected and ready!")
+                print(f"Student {protocol} implementation detected and ready")
             else:
-                print("⚠️ Student implementation not ready - simulation will show implementation prompts")
-        else:
-            print("📝 No student implementation found - students need to implement BB84 first")
+                print(f"Student {protocol} implementation not ready")
     except Exception as e:
-        print(f"📝 Could not check student implementation status: {e}")
+        pass  # Silent fail
 
     yield
-    # Shutdown
-    print("🛑 Backend server shutting down...")
+    # Shutdown (silent)
 
 app = get_app(lifespan=lifespan)
 
@@ -120,9 +104,6 @@ if __name__ == '__main__':
             allow_headers=["*"],
         )
         
-        print(f"Starting backend server on http://{host}:{port}")
-        print("Make sure to start the frontend with 'npm run dev' in the ui directory")
-        
         import uvicorn
         uvicorn.run(
             "start:app",
@@ -135,5 +116,3 @@ if __name__ == '__main__':
         import traceback
         traceback.print_exc()
         sys.exit(1)
-    
-    print(f"Server started on {host}:{port} with reload={reload_flag}")

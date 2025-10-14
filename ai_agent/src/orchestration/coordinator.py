@@ -30,14 +30,9 @@ class Coordinator:
     async def initialize_system(self):
         if not getattr(self, "initialized", False):
             """Initialize all required agents and resources."""
-            self.logger.info("Initializing agent system")
-            print("Initializing  agents")
-            # Register core agents
+            # Register core agents (silent)
             self._register_core_agents()
             self.initialized = True
-        else:
-            print("System already initialized")
-            self.logger.info("System already initialized")
             
         
     def _register_core_agents(self):
