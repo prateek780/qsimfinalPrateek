@@ -330,6 +330,7 @@ qsimnotebookfinal/simulation_logs/
 ### Ask the Vibe Coding Agent About Your Logs
 
 You can interact with the AI agent to analyze and understand your simulation results. Use these example prompts:
+"My simulation logs are stored under "qsimnotebookfinal/simulation_logs/" can you analyze the files and answer me according to those logs.."
 
 **Basic Analysis:**
 ```
