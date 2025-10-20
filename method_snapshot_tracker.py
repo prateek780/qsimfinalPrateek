@@ -145,11 +145,9 @@ def save_method_snapshots(
     Returns:
         Dictionary of current methods
     """
-    # Extract all methods from code
     current_methods = extract_methods_from_code(code)
     
     if not current_methods:
-        print(f"  No methods found in {protocol} code")
         return {}
     
     # Get Firebase client
@@ -329,7 +327,7 @@ def save_method_snapshot_to_firebase(
             'total_snapshots': 1
         })
     
-    print(f"  Snapshot saved: {protocol}.{method_name} ({method_data['line_count']} lines)")
+    pass
 
 
 def get_method_snapshots(student_id: str, session_id: str, protocol: str) -> Dict:

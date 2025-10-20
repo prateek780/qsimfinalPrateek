@@ -1,7 +1,13 @@
 """
-Simple Notebook Activity Tracker
-Tracks student vibe coding cells for BB84 and B92 protocols
-Saves to Firebase cloud database and local JSON backups
+Notebook Activity Tracker
+Tracks student coding for BB84 and B92 protocols with Firebase cloud storage
+
+Usage:
+    1. Initialize: tracker = notebook_tracker.init_tracker("student_id")
+    2. Use magic commands in cells:
+       %%save_and_track_bb84  (auto-fixes indentation, saves, tracks)
+       %%save_and_track_b92
+    3. Or manual: %save -f student_bb84_impl.py 11, then track_bb84()
 """
 import json
 import os
@@ -99,8 +105,6 @@ class NotebookTracker:
                     f"{protocol} code tracked: {len(code_lines)} lines"
                 )
                 
-                print(f"Tracked {protocol} cell: {activity['line_count']} lines, {activity['code_length']} chars")
-                
             except Exception as e:
                 print(f"Firebase save error: {e}")
         
@@ -137,19 +141,17 @@ def init_tracker(student_id, use_firebase=True):
     _tracker = NotebookTracker(student_id, use_firebase=use_firebase)
     _session_id = _tracker.session_id
     
-    print("=" * 60)
-    print(f"TRACKING STARTED FOR STUDENT: {student_id}")
-    print("=" * 60)
-    
     if _tracker.use_firebase:
-        print(f"Firebase: Connected (Session ID: {_session_id})")
-        print("Cloud Storage: All data saved to Firebase")
+        print(f"Tracking initialized for {student_id} (Session: {_session_id})")
     else:
-        print("Firebase: Not available (JSON-only mode)")
+        print(f"Tracking initialized for {student_id} (Local mode)")
     
-    print(f"Backup JSON: {_tracker.session_file}")
-    print("\nYour vibe coding will be automatically tracked.")
-    print("Code in BB84 and B92 cells will be logged on each run.\n")
+    try:
+        import smart_save
+        smart_save.load_magic()
+        print("Smart save commands available: %%save_and_track_bb84, %%save_and_track_b92")
+    except Exception:
+        pass
     return _tracker
 
 def get_session_id():
@@ -163,7 +165,7 @@ def get_student_id():
 def track(protocol, code, output=""):
     """Track a cell execution"""
     if _tracker is None:
-        print("⚠️ Tracker not initialized. Please run the setup cell first.")
+        print("Warning: Tracker not initialized. Run setup cell first.")
         return
     _tracker.track_cell(protocol, code, output)
 
@@ -194,6 +196,77 @@ def verify_file_updated(protocol):
         return False, f"File {filename} is empty. Make sure %save captured your code."
     
     return True, "File verified"
+
+def _fix_indentation(code: str, class_name: str) -> str:
+    """
+    Automatically fix indentation for methods that should be inside the class
+    This handles code pasted from AI agents that might not be properly indented
+    """
+    import re
+    
+    lines = code.split('\n')
+    fixed_lines = []
+    in_class = False
+    class_indent = 0
+    last_was_method_def = False
+    method_indent = 0
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        
+        # Detect class definition
+        if re.match(rf'class\s+{class_name}', line):
+            in_class = True
+            class_indent = len(line) - len(line.lstrip())
+            fixed_lines.append(line)
+            i += 1
+            continue
+        
+        # If we're in the class, check for method definitions
+        if in_class and line.strip():
+            current_indent = len(line) - len(line.lstrip())
+            
+            # Check if this is a method definition
+            if re.match(r'def\s+\w+\s*\(', line.strip()):
+                # Method should be indented at class level + 4
+                expected_indent = class_indent + 4
+                fixed_line = ' ' * expected_indent + line.lstrip()
+                fixed_lines.append(fixed_line)
+                last_was_method_def = True
+                method_indent = expected_indent
+                i += 1
+                continue
+            
+            # If this line follows a method definition, it's method body
+            elif last_was_method_def and current_indent <= method_indent:
+                # This is the method body - indent at method level + 4
+                if line.strip():
+                    fixed_line = ' ' * (method_indent + 4) + line.lstrip()
+                    fixed_lines.append(fixed_line)
+                else:
+                    fixed_lines.append(line)
+                i += 1
+                continue
+            
+            # Check if line is part of method body (properly indented content)
+            elif current_indent > class_indent:
+                # Keep as-is if already indented
+                fixed_lines.append(line)
+                # Check if we're still in a method
+                if current_indent <= method_indent and not line.strip().startswith('#'):
+                    last_was_method_def = False
+                i += 1
+                continue
+        
+        # Default: keep line as-is
+        fixed_lines.append(line)
+        if line.strip() and not line.strip().startswith('#'):
+            last_was_method_def = False
+        i += 1
+    
+    return '\n'.join(fixed_lines)
+
 
 def _clean_code(code):
     """Remove PROMPT sections and keep only actual code"""
@@ -279,36 +352,25 @@ def _save_snapshot_from_tracker(protocol, code):
         return
     
     try:
-        # Import method snapshot tracker
         import method_snapshot_tracker
         
-        # Extract and save snapshots for each method
-        print(f"\nCreating method-level snapshots for {protocol}:")
         methods = method_snapshot_tracker.save_method_snapshots(
             _tracker.student_id,
             _tracker.session_id,
             protocol,
             code,
-            previous_methods=None  # TODO: Track previous state
+            previous_methods=None
         )
         
-        print(f"Total methods tracked: {len(methods)}")
-        
-        # Full code snapshots are handled by the background watcher
-        # We only create method-level snapshots here
-        
-        # Log the snapshot creation
         firebase_manager.save_activity_log(
             _tracker.student_id,
             _tracker.session_id,
             'method_snapshots_saved',
             protocol,
-            f"{protocol} method snapshots: {len(methods)} methods tracked"
+            f"{protocol}: {len(methods)} methods"
         )
     except Exception as e:
-        print(f"Snapshot save error: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"Snapshot error: {e}")
 
 def track_bb84(code=None, validate=True):
     """
@@ -319,49 +381,44 @@ def track_bb84(code=None, validate=True):
         Method 2: notebook_tracker.track_bb84('''your code here''')  # Pass code directly
     """
     if _tracker is None:
-        print("⚠️ Tracker not initialized. Please run Cell 7 (Setup) first.")
+        print("Error: Tracker not initialized")
         return
     
     try:
-        # If code is provided directly, use it
         if code is not None:
-            cleaned_code = _clean_code(code)
+            fixed_code = _fix_indentation(code, "StudentQuantumHost")
+            cleaned_code = _clean_code(fixed_code)
             _tracker.track_cell("BB84", cleaned_code)
             _save_snapshot_from_tracker("BB84", cleaned_code)
-            print("✓ BB84 code tracked and snapshot saved!")
-            print("\n⏱️ WAIT 5 SECONDS before continuing to next method!")
+            print("BB84 code tracked")
             return
         
-        # Validate file if requested
         if validate:
             ok, msg = verify_file_updated('BB84')
             if not ok:
-                print(f"⚠️ {msg}")
+                print(f"Warning: {msg}")
                 return
         
-        # Try to read from the student implementation file
         from pathlib import Path
         bb84_file = Path("student_bb84_impl.py")
         
         if bb84_file.exists():
             with open(bb84_file, 'r', encoding='utf-8') as f:
                 code = f.read()
-            # Clean the code to remove prompts
-            cleaned_code = _clean_code(code)
+            
+            fixed_code = _fix_indentation(code, "StudentQuantumHost")
+            
+            with open(bb84_file, 'w', encoding='utf-8') as f:
+                f.write(fixed_code)
+            
+            cleaned_code = _clean_code(fixed_code)
             _tracker.track_cell("BB84", cleaned_code)
             _save_snapshot_from_tracker("BB84", cleaned_code)
-            print(f"✓ BB84 code tracked from student_bb84_impl.py")
-            print(f"✓ Snapshot saved to Firebase")
-            print(f"\n{'='*60}")
-            print(f"⏱️ WAIT 5 SECONDS BEFORE CONTINUING!")
-            print(f"{'='*60}")
-            print("This allows the background watcher to capture your progress.")
+            print("BB84 code tracked and saved to Firebase")
         else:
-            print("✗ ERROR: student_bb84_impl.py not found")
-            print("\nDid you forget to save your code?")
-            print("Run: %save -f student_bb84_impl.py <cell_number>")
+            print("Error: student_bb84_impl.py not found")
     except Exception as e:
-        print(f"✗ ERROR: Could not track BB84: {e}")
+        print(f"Error tracking BB84: {e}")
 
 def track_b92(code=None, validate=True):
     """
@@ -372,47 +429,42 @@ def track_b92(code=None, validate=True):
         Method 2: notebook_tracker.track_b92('''your code here''')  # Pass code directly
     """
     if _tracker is None:
-        print("⚠️ Tracker not initialized. Please run Cell 7 (Setup) first.")
+        print("Error: Tracker not initialized")
         return
     
     try:
-        # If code is provided directly, use it
         if code is not None:
-            cleaned_code = _clean_code(code)
+            fixed_code = _fix_indentation(code, "StudentB92Host")
+            cleaned_code = _clean_code(fixed_code)
             _tracker.track_cell("B92", cleaned_code)
             _save_snapshot_from_tracker("B92", cleaned_code)
-            print("✓ B92 code tracked and snapshot saved!")
-            print("\n⏱️ WAIT 5 SECONDS before continuing to next method!")
+            print("B92 code tracked")
             return
         
-        # Validate file if requested
         if validate:
             ok, msg = verify_file_updated('B92')
             if not ok:
-                print(f"⚠️ {msg}")
+                print(f"Warning: {msg}")
                 return
         
-        # Try to read from the student implementation file
         from pathlib import Path
         b92_file = Path("student_b92_impl.py")
         
         if b92_file.exists():
             with open(b92_file, 'r', encoding='utf-8') as f:
                 code = f.read()
-            # Clean the code to remove prompts
-            cleaned_code = _clean_code(code)
+            
+            fixed_code = _fix_indentation(code, "StudentB92Host")
+            
+            with open(b92_file, 'w', encoding='utf-8') as f:
+                f.write(fixed_code)
+            
+            cleaned_code = _clean_code(fixed_code)
             _tracker.track_cell("B92", cleaned_code)
             _save_snapshot_from_tracker("B92", cleaned_code)
-            print(f"✓ B92 code tracked from student_b92_impl.py")
-            print(f"✓ Snapshot saved to Firebase")
-            print(f"\n{'='*60}")
-            print(f"⏱️ WAIT 5 SECONDS BEFORE CONTINUING!")
-            print(f"{'='*60}")
-            print("This allows the background watcher to capture your progress.")
+            print("B92 code tracked and saved to Firebase")
         else:
-            print("✗ ERROR: student_b92_impl.py not found")
-            print("\nDid you forget to save your code?")
-            print("Run: %save -f student_b92_impl.py <cell_number>")
+            print("Error: student_b92_impl.py not found")
     except Exception as e:
-        print(f"✗ ERROR: Could not track B92: {e}")
+        print(f"Error tracking B92: {e}")
 
