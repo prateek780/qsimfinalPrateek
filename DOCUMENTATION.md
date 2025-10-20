@@ -173,6 +173,9 @@ In a new cell, run:
 ```python
 # Find your cell number (e.g., [8]) and run:
 %save -f student_bb84_impl.py 8
+This cell number changes every time you run the vibe code cell , make sure to update the cell number here.
+Make sure the vibe code is saved to your impl.py file.
+Restart the kernel and start over if you face any isssues.
 ```
 
 #### STEP 4: Track in Firebase
