@@ -116,7 +116,8 @@ TRACKING STARTED FOR STUDENT: your_student_id
 |------|--------|---------|
 | **1** | **Read Prompt** | Review cell instructions - each cell has detailed explanation |
 | **2** | **Generate Code** | Use AI assistant (Copilot/Cursor) to help write implementation |
-| **3** | **Save Code** | `%save -f student_bb84_impl.py <cell_number>` | #cell number changes for each run so make sure to notice and change it for every run.
+| **3** | **Save Code** | `%save -f student_bb84_impl.py <cell_number>` | 
+(cell number changes for each run so make sure to notice and change it for every run.)
 | **4** | **Track Code** | `notebook_tracker.track_bb84()` - uploads to Firebase with timestamp |
 | **5** | **Wait** | Pause 5 seconds - let background watcher capture changes |
 
