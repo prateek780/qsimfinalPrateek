@@ -15,6 +15,8 @@
 - [Implementing BB84 Protocol](#implementing-bb84-protocol)
 - [Implementing B92 Protocol](#implementing-b92-protocol)
 - [Visualizing Your Implementation](#visualizing-your-implementation)
+  - [Understanding Your Simulation Logs](#understanding-your-simulation-logs)
+  - [Ask the Vibe Coding Agent](#ask-the-vibe-coding-agent-about-your-logs)
 - [How Tracking Works](#how-tracking-works)
 - [Troubleshooting](#troubleshooting)
 - [Quick Reference](#quick-reference)
@@ -298,6 +300,97 @@ After completing all methods for a protocol:
 | **Key Generation** | Shows the final shared key after error estimation |
 | **Statistics** | Error rate, key length, protocol efficiency metrics |
 
+### Understanding Your Simulation Logs
+
+All simulation runs are automatically saved to your local machine in the `simulation_logs/` folder. Each log file contains detailed information about your QKD protocol execution, including timestamps and event details.
+
+**Log Location:**
+```
+qsimnotebookfinal/simulation_logs/
+├── simulation_log_Untitled_Topology_20251020_143052.txt
+├── simulation_log_Untitled_Topology_20251020_150234.txt
+└── ...
+```
+
+**Log File Naming:**
+- Format: `simulation_log_Untitled_Topology_YYYYMMDD_HHMMSS.txt`
+- Date/Time: Timestamp when simulation started
+- Protocol: BB84 or B92 is indicated inside the log file content
+
+**What's Logged:**
+- Protocol type (BB84 or B92) and simulation start time
+- Qubit generation and encoding details
+- Basis selection for each qubit
+- Measurement outcomes with timestamps
+- Basis reconciliation results and efficiency
+- Error rate calculations
+- Final key generation statistics
+- All network events during simulation
+
+### Ask the Vibe Coding Agent About Your Logs
+
+You can interact with the AI agent to analyze and understand your simulation results. Use these example prompts:
+
+**Basic Analysis:**
+```
+"What was my error rate in the last BB84 simulation?"
+"Show me the key generation statistics from my recent run"
+"How many qubits did I send in the last simulation?"
+```
+
+**Debugging Help:**
+```
+"Why is my error rate higher than expected?"
+"Which methods failed in my last simulation?"
+"What went wrong with basis reconciliation?"
+```
+
+**Learning and Understanding:**
+```
+"Explain the measurement outcomes in my last B92 run"
+"What percentage of my bases matched with Bob?"
+"How efficient was my key generation process?"
+```
+
+**Comparison and Improvement:**
+```
+"Compare my last two BB84 simulations"
+"How can I improve my error rate?"
+"What's the difference between my BB84 and B92 performance?"
+```
+
+**Detailed Investigation:**
+```
+"Show me the first 10 qubits from my last simulation"
+"What were the basis choices for unsuccessful measurements?"
+"Analyze the pattern in my measurement errors"
+```
+
+To access your logs programmatically in the notebook:
+
+```python
+# View available log files
+import os
+log_files = sorted(os.listdir('simulation_logs'))
+print(f"Total logs: {len(log_files)}")
+for log in log_files[-5:]:  # Show last 5 logs
+    print(f"  - {log}")
+
+# Read the most recent log
+latest_log = sorted(os.listdir('simulation_logs'))[-1]
+with open(f'simulation_logs/{latest_log}', 'r') as f:
+    log_content = f.read()
+    
+# Check which protocol was used
+if 'BB84' in log_content:
+    print("Protocol: BB84")
+elif 'B92' in log_content:
+    print("Protocol: B92")
+    
+# Display first 20 lines
+print('\n'.join(log_content.split('\n')[:20]))
+```
+
 ### Switching Between Protocols
 
 To visualize a different protocol:
@@ -530,6 +623,8 @@ Then run the last cell in notebook to visualize the selected protocol.
 | Track BB84 | `notebook_tracker.track_bb84()` | After saving |
 | Track B92 | `notebook_tracker.track_b92()` | After saving |
 | Visualize protocol | Run last cell in notebook | Shows QKD simulation |
+| View simulation logs | Check `simulation_logs/` folder | Automatic after each run |
+| Analyze logs | Ask vibe coding agent | Use example prompts from guide |
 
 ---
 
@@ -560,6 +655,9 @@ Then run the last cell in notebook to visualize the selected protocol.
 | **Can I edit after tracking?** | Yes, background watcher captures all changes automatically |
 | **How do I visualize my implementation?** | Run the last cell in the notebook |
 | **What if Firebase connection is slow?** | First connection takes 10-30 seconds - this is normal |
+| **Where are my simulation logs saved?** | In `simulation_logs/` folder in your project directory |
+| **How do I analyze my simulation results?** | Ask the vibe coding agent questions about your logs (see examples in Visualization section) |
+| **Can I delete old simulation logs?** | Yes, they're local files - but keep recent ones for analysis |
 
 ---
 
