@@ -1,0 +1,20 @@
+{
+  "student_id": "test123",
+  "protocol": "bb84",
+  "snapshot_number": 4,
+  "timestamp": "2025-10-15T10:31:28.956338",
+  "time_since_last_change": 1215.669685,
+  "code": [
+    ""
+  ],
+  "code_length": 0,
+  "line_count": 1,
+  "file_hash": "d41d8cd98f00b204e9800998ecf8427e",
+  "changes": {
+    "lines_added": -122,
+    "lines_removed": 122,
+    "code_length_change": -5837,
+    "time_spent_seconds": 1215.7,
+    "time_spent": "20m 15s"
+  }
+}

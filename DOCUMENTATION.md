@@ -436,7 +436,7 @@ You write code → Save file → Track in Firebase
             Background watcher (every 3 seconds)
                     ↓
     Creates automatic snapshots of file changes
-```
+   ```
 
 ---
 
@@ -471,10 +471,10 @@ You write code → Save file → Track in Firebase
 
 **Fix:**
 
-```python
+   ```python
 import notebook_tracker
 notebook_tracker.init_tracker(student_id, use_firebase=True)
-```
+   ```
 
 ---
 
@@ -506,7 +506,7 @@ notebook_tracker.init_tracker(student_id, use_firebase=True)
 
 # 2. Then track
 notebook_tracker.track_bb84()
-```
+   ```
 
 ---
 
@@ -521,13 +521,13 @@ notebook_tracker.track_bb84()
 
 **Complete fix:**
 
-```bash
+   ```bash
 # Remove all conflicting containers
 docker rm -f redis python-server celery caddy redis-commander
 
 # Start fresh
 docker-compose up -d
-```
+   ```
 
 ---
 
