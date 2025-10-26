@@ -15,12 +15,10 @@ import { makeApiRequest } from './handler';
 //   return response.json();
 // }
 
-// Define a more detailed structure for our messages
+// Define message structure
 interface Message {
   sender: 'user' | 'peer' | 'tutor';
   text: string;
-  // We store the original question to allow for easy escalation
-  originalQuery?: string;
 }
 
 interface ChatPanelProps {
@@ -174,32 +172,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({onClose}) => {
         method: 'POST',
       });
 
-      const peerMessage: Message = { sender: 'peer', text: response.data, originalQuery: query };
+      const peerMessage: Message = { sender: 'peer', text: response.data };
       setMessages(prev => [...prev, peerMessage]);
-
-    } catch (error) {
-      handleApiError(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleEscalate = async (originalQuery: string) => {
-    setIsLoading(true);
-    const thinkingMessage: Message = { sender: 'tutor', text: "Thinking..." };
-    setMessages(prev => [...prev, thinkingMessage]);
-
-    try {
-      const response = await makeApiRequest('/q-toolkit/ask', {
-        query: originalQuery,
-        agent_type: 'tutor',
-      });
-      
-      setMessages(prev => {
-          const newMessages = [...prev];
-          newMessages[newMessages.length - 1] = { sender: 'tutor', text: response.data };
-          return newMessages;
-      });
 
     } catch (error) {
       handleApiError(error);
@@ -226,16 +200,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({onClose}) => {
             <div className={`message-bubble ${msg.sender}`}>
               {msg.text}
             </div>
-            {msg.sender === 'peer' && msg.originalQuery && (
-              <button 
-                className="escalate-button" 
-                onClick={() => handleEscalate(msg.originalQuery!)}
-                disabled={isLoading}
-              >
-                <infoIcon.react tag="span" />
-                Ask Tutor for a deeper explanation
-              </button>
-            )}
           </div>
         ))}
         <div ref={messagesEndRef} />

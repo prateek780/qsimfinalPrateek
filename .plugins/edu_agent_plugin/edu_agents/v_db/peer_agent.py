@@ -40,7 +40,7 @@ class PeerAgent:
         """Clean and format code output for easy copy-paste with line-by-line structure."""
         import re
         
-        cleaned = raw_output
+        cleaned = raw_output.strip()
         
         # Step 1: Remove markdown code blocks
         cleaned = re.sub(r'```python\n?', '', cleaned, flags=re.IGNORECASE)
@@ -58,93 +58,81 @@ class PeerAgent:
         for tag in tags_to_remove:
             cleaned = re.sub(tag, '', cleaned, flags=re.IGNORECASE)
         
-        # Step 3: Remove explanatory text before code
+        # Step 3: Split into lines and find code boundaries
         lines = cleaned.split('\n')
         code_start_idx = -1
+        code_end_idx = len(lines)
         
+        # Find where code starts (first 'def')
         for i, line in enumerate(lines):
             stripped = line.strip()
+            # Skip explanatory lines before code
+            if any(phrase in stripped.lower() for phrase in [
+                "here is", "here's", "this code", "this method", 
+                "the following", "below is", "i've created"
+            ]):
+                continue
             if stripped.startswith('def '):
                 code_start_idx = i
                 break
         
-        if code_start_idx > 0:
-            lines = lines[code_start_idx:]
+        if code_start_idx == -1:
+            return cleaned.strip()
         
-        # Step 4: Extract only the method definition
+        # Extract from the def line onwards
+        lines = lines[code_start_idx:]
+        
+        # Step 4: Extract ONLY the method definition (stop at explanatory text)
         method_lines = []
-        in_method = False
-        method_indent = None
-        base_indent = 0
+        base_indent = None
         
-        for line in lines:
+        for i, line in enumerate(lines):
             stripped = line.strip()
             
-            # Skip empty lines before method starts
-            if not in_method and not stripped:
-                continue
-            
-            # Skip class definitions
-            if stripped.startswith('class '):
-                continue
-            
-            # Start collecting when we hit "def"
-            if stripped.startswith('def '):
-                in_method = True
-                method_indent = len(line) - len(line.lstrip())
-                base_indent = method_indent
+            # First line should be def
+            if i == 0:
+                if not stripped.startswith('def '):
+                    continue
                 method_lines.append(line)
+                base_indent = len(line) - len(line.lstrip())
                 continue
             
-            if in_method:
-                # Stop at test cases, assertions, examples, or usage code
-                if any(keyword in stripped.lower() for keyword in [
-                    '# test case', '# example', '# usage', 'assert ', 
-                    'if __name__', '# testing', 'print("testing'
-                ]):
+            # Stop at explanatory text after the method
+            if stripped and not line.startswith(' ' * (base_indent + 1)) and base_indent is not None:
+                # This line is not indented under the method
+                if not stripped.startswith('def '):
+                    # It's explanatory text, stop here
                     break
-                
-                # Stop at next method or class definition
-                if stripped.startswith('def ') or stripped.startswith('class '):
-                    break
-                
-                # Check if we've completely left the method (dedented to base level or less)
-                if stripped:
-                    current_indent = len(line) - len(line.lstrip())
-                    if current_indent < base_indent:
-                        break
-                
-                method_lines.append(line)
+            
+            # Stop at common explanatory phrases
+            if any(phrase in stripped.lower() for phrase in [
+                'this method', 'this function', 'the above', 'note that',
+                'you can use', 'example usage', 'to use this'
+            ]):
+                break
+            
+            # Stop at test cases, assertions, examples
+            if any(keyword in stripped.lower() for keyword in [
+                '# test', '# example', '# usage', 'assert ', 
+                'if __name__', 'print("test'
+            ]):
+                break
+            
+            # Stop at next method or class
+            if stripped.startswith('def ') or stripped.startswith('class '):
+                break
+            
+            method_lines.append(line)
         
-        # Step 5: Clean up the extracted method
-        if not method_lines:
-            # Fallback: try to find any def block
-            for i, line in enumerate(lines):
-                if line.strip().startswith('def '):
-                    method_lines = [line]
-                    base_indent = len(line) - len(line.lstrip())
-                    
-                    for j in range(i + 1, len(lines)):
-                        next_line = lines[j]
-                        next_stripped = next_line.strip()
-                        
-                        if next_stripped:
-                            next_indent = len(next_line) - len(next_line.lstrip())
-                            if next_indent <= base_indent:
-                                break
-                        
-                        method_lines.append(next_line)
-                    break
+        # Step 5: Clean up trailing empty lines
+        while method_lines and not method_lines[-1].strip():
+            method_lines.pop()
         
         if not method_lines:
             return cleaned.strip()
         
         # Step 6: Join and format
         result = '\n'.join(method_lines)
-        
-        # Remove trailing empty lines
-        while result.endswith('\n\n'):
-            result = result[:-1]
         
         # Ensure consistent spacing (max 1 blank line between sections)
         while '\n\n\n' in result:
@@ -265,27 +253,27 @@ COMMON OPERATIONS:
         """
         query_lower = query.lower()
         
-        # Detect if this is asking for explanation/description
-        is_explanation_request = any(keyword in query_lower for keyword in [
+        # PRIORITY 1: Detect if this is asking for explanation/description
+        explanation_keywords = [
             'explain', 'describe', 'what does', 'how does', 'why does',
             'tell me about', 'what is', 'can you explain', 'walk me through',
-            'breakdown', 'help me understand', 'clarify'
-        ])
+            'breakdown', 'help me understand', 'clarify', 'explain the',
+            'describe the', 'what\'s this', 'how this', 'why this'
+        ]
+        is_explanation_request = any(keyword in query_lower for keyword in explanation_keywords)
         
-        # Detect if this is a code generation request
-        is_code_request = any(keyword in query_lower for keyword in [
-            'write', 'generate', 'implement', 'create', 'code for', 'method for', 
-            'function for', 'give me code', 'show me code', 'need code'
-        ]) and not is_explanation_request
+        # PRIORITY 2: Detect explicit code generation requests
+        code_generation_keywords = [
+            'write', 'generate', 'implement', 'create', 'code for', 
+            'method for', 'function for', 'give me code', 'show me code', 
+            'need code', 'give me the', 'show me the', 'need the',
+            'write a', 'create a', 'generate a', 'implement a'
+        ]
+        is_code_request = any(keyword in query_lower for keyword in code_generation_keywords)
         
-        # Also check for specific method names (but only if not asking for explanation)
-        has_method_keywords = any(keyword in query_lower for keyword in [
-            'send_qubits', 'reconcile', 'error_rate', 'sifting',
-            'prepare_qubit', 'measure_qubit', 'process_received'
-        ])
-        
-        if has_method_keywords and not is_explanation_request:
-            is_code_request = True
+        # If asking for explanation, NEVER generate code
+        if is_explanation_request:
+            is_code_request = False
         
         # Detect if this is a log summary request
         is_log_summary = any(keyword in query_lower for keyword in [
@@ -376,7 +364,7 @@ Provide a clear, friendly explanation (2-4 paragraphs) based on quantum key dist
         # Format code output if this is a code request
         if is_code_request:
             response = self._format_code_output(response)
-            # Wrap in markdown code block for syntax highlighting
+            # Format as clean code block without extra notes
             response = "```python\n" + response + "\n```"
         
         return response
