@@ -9,10 +9,10 @@ class StudentQuantumHost:
 
     # PROMPT FOR CONSTRUCTOR:
     """
-    Create a constructor that accepts a single parameter for the host's identifier.
+    Create a constructor code that accepts a single parameter for the host's identifier.
     Store this identifier as an instance variable. Initialize five empty list attributes:
     one for storing random binary values, one for preparation bases, one for encoded states,
-    one for measurement bases used during reception, and one for measurement results.
+    one for the measurement bases used during reception, and one for measurement results.
     After initialization, print a confirmation message in the format:
     "StudentQuantumHost '<identifier>' initialized successfully!"
     where <identifier> is replaced with the actual value passed to the constructor.

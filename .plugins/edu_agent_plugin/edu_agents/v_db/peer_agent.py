@@ -1,6 +1,7 @@
 import requests
 import json
 import os
+from typing import Optional
 import ipywidgets as widgets
 from IPython.display import display, Markdown
 from .vector_db_manager import VectorDBManager
@@ -35,18 +36,18 @@ class PeerAgent:
             error_message = f"Error calling Ollama API: {e}. Please ensure Ollama is running and the model '{self.ollama_chat_model}' is pulled."
             print(error_message)
             return error_message
-    
+
     def _format_code_output(self, raw_output: str) -> str:
-        """Clean and format code output for easy copy-paste with line-by-line structure."""
+        """Clean and format code output using AST parsing for proper formatting."""
         import re
+        import ast
         
         cleaned = raw_output.strip()
         
-        # Step 1: Remove markdown code blocks
+        # Step 1: Remove markdown code blocks and tags
         cleaned = re.sub(r'```python\n?', '', cleaned, flags=re.IGNORECASE)
         cleaned = re.sub(r'```\n?', '', cleaned, flags=re.IGNORECASE)
         
-        # Step 2: Remove ALL bracketed tags and XML-style tags
         tags_to_remove = [
             r'\[PYTHON\]', r'\[/PYTHON\]', 
             r'\[TESTS\]', r'\[/TESTS\]',
@@ -58,85 +59,95 @@ class PeerAgent:
         for tag in tags_to_remove:
             cleaned = re.sub(tag, '', cleaned, flags=re.IGNORECASE)
         
-        # Step 3: Split into lines and find code boundaries
-        lines = cleaned.split('\n')
-        code_start_idx = -1
-        code_end_idx = len(lines)
-        
-        # Find where code starts (first 'def')
-        for i, line in enumerate(lines):
-            stripped = line.strip()
-            # Skip explanatory lines before code
-            if any(phrase in stripped.lower() for phrase in [
-                "here is", "here's", "this code", "this method", 
-                "the following", "below is", "i've created"
-            ]):
-                continue
-            if stripped.startswith('def '):
-                code_start_idx = i
-                break
-        
-        if code_start_idx == -1:
+        # Step 2: Find the method definition
+        def_match = re.search(r'def\s+\w+\([^)]*\):', cleaned)
+        if not def_match:
             return cleaned.strip()
         
-        # Extract from the def line onwards
-        lines = lines[code_start_idx:]
+        # Extract from 'def' onwards and remove explanatory text after the method
+        code = cleaned[def_match.start():]
         
-        # Step 4: Extract ONLY the method definition (stop at explanatory text)
-        method_lines = []
-        base_indent = None
+        # Remove explanatory text after method (common patterns)
+        explanatory_patterns = [
+            r'\n\s*This (method|function|code)',
+            r'\n\s*The above',
+            r'\n\s*You can use',
+            r'\n\s*Example usage:',
+            r'\n\s*# Test',
+            r'\n\s*if __name__',
+        ]
+        for pattern in explanatory_patterns:
+            match = re.search(pattern, code, re.IGNORECASE)
+            if match:
+                code = code[:match.start()]
         
-        for i, line in enumerate(lines):
-            stripped = line.strip()
+        # Step 3: Try AST-based reformatting (handles single-line code)
+        try:
+            # Parse the code into an AST
+            tree = ast.parse(code)
             
-            # First line should be def
-            if i == 0:
-                if not stripped.startswith('def '):
-                    continue
-                method_lines.append(line)
-                base_indent = len(line) - len(line.lstrip())
-                continue
-            
-            # Stop at explanatory text after the method
-            if stripped and not line.startswith(' ' * (base_indent + 1)) and base_indent is not None:
-                # This line is not indented under the method
-                if not stripped.startswith('def '):
-                    # It's explanatory text, stop here
-                    break
-            
-            # Stop at common explanatory phrases
-            if any(phrase in stripped.lower() for phrase in [
-                'this method', 'this function', 'the above', 'note that',
-                'you can use', 'example usage', 'to use this'
-            ]):
-                break
-            
-            # Stop at test cases, assertions, examples
-            if any(keyword in stripped.lower() for keyword in [
-                '# test', '# example', '# usage', 'assert ', 
-                'if __name__', 'print("test'
-            ]):
-                break
-            
-            # Stop at next method or class
-            if stripped.startswith('def ') or stripped.startswith('class '):
-                break
-            
-            method_lines.append(line)
+            # Use ast.unparse (Python 3.9+) to reformat
+            try:
+                formatted_code = ast.unparse(tree)
+                return formatted_code.strip()
+            except AttributeError:
+                # Python < 3.9, fall back to manual formatting
+                pass
+        except SyntaxError:
+            # Code has syntax errors, try to fix common issues
+            pass
         
-        # Step 5: Clean up trailing empty lines
-        while method_lines and not method_lines[-1].strip():
-            method_lines.pop()
+        # Step 4: Fallback - Manual line-by-line formatting for single-line code
+        # This handles the case where CodeLlama outputs everything on one line
         
-        if not method_lines:
-            return cleaned.strip()
+        # First, ensure there's a space after colons if missing
+        code = re.sub(r':(\S)', r': \1', code)
         
-        # Step 6: Join and format
-        result = '\n'.join(method_lines)
+        # Add newlines after statement-ending patterns
+        # Pattern: after def line's colon
+        code = re.sub(r'(def\s+\w+\([^)]*\):)\s*', r'\1\n    ', code)
         
-        # Ensure consistent spacing (max 1 blank line between sections)
+        # Pattern: Split statements that should be on separate lines
+        # This is a simplified approach - split by common keywords
+        formatted_lines = []
+        current_line = ""
+        indent_level = 0
+        
+        # Split by keywords and operators that indicate new statements
+        tokens = re.split(r'(\s+def\s+|\s+if\s+|\s+elif\s+|\s+else:|\s+for\s+|\s+while\s+|\s+return\s+|\s+print\(|self\.\w+\s*=|^\s*\w+\s*=)', code)
+        
+        in_function = False
+        for i, token in enumerate(tokens):
+            token_stripped = token.strip()
+            
+            if token_stripped.startswith('def '):
+                if formatted_lines:
+                    formatted_lines.append('\n')
+                formatted_lines.append(token_stripped)
+                in_function = True
+                indent_level = 1
+            elif token_stripped.startswith(('if ', 'elif ', 'for ', 'while ')):
+                formatted_lines.append('\n' + '    ' * indent_level + token_stripped)
+                indent_level += 1
+            elif token_stripped == 'else:':
+                indent_level -= 1
+                formatted_lines.append('\n' + '    ' * indent_level + token_stripped)
+                indent_level += 1
+            elif token_stripped.startswith('return '):
+                formatted_lines.append('\n' + '    ' * indent_level + token_stripped)
+            elif token_stripped.startswith('print(') or '=' in token_stripped:
+                formatted_lines.append('\n' + '    ' * indent_level + token_stripped)
+            elif token_stripped:
+                formatted_lines.append(token)
+        
+        result = ''.join(formatted_lines)
+        
+        # Step 5: Clean up excessive whitespace
         while '\n\n\n' in result:
             result = result.replace('\n\n\n', '\n\n')
+        
+        # Remove trailing whitespace from each line
+        result = '\n'.join(line.rstrip() for line in result.split('\n'))
         
         return result.strip()
 
@@ -190,6 +201,131 @@ COMMON OPERATIONS:
 - Choose basis: 0 for rectilinear (Z), 1 for diagonal (X)
 - Encoding: basis 0: bit 0→"|0⟩", bit 1→"|1⟩" | basis 1: bit 0→"|+⟩", bit 1→"|-⟩"
 - Measuring: Same basis → deterministic result, Different basis → random outcome
+
+QUANTUM STATE ENCODING - COMMON MISTAKES TO AVOID:
+
+❌ WRONG - Using f-strings creates invalid states:
+    encoded_state = f"|{random_bit}⟩"          # Creates "|0⟩" or "|1⟩" but never diagonal states!
+    encoded_state = f"|{random_bit + 1}⟩"      # Creates "|1⟩" or "|2⟩" (INVALID STATE!)
+    state = f"|{bit}⟩" if basis == 0 else f"|{bit+1}⟩"  # Still WRONG!
+
+✅ CORRECT - Use if-else with literal string values:
+    if basis == 0:
+        state = "|0⟩" if bit == 0 else "|1⟩"
+    else:
+        state = "|+⟩" if bit == 0 else "|-⟩"
+
+VARIABLE NAMING - COMMON MISTAKES:
+
+❌ WRONG variable names in bb84_send_qubits:
+    random_bit = random.randint(0, 1)    # Should be: bit
+    encoded_state = "..."                # Should be: state
+    
+✅ CORRECT variable names:
+    bit = random.randint(0, 1)
+    basis = random.randint(0, 1)
+    state = "|0⟩" if ...
+
+FINAL PRINT STATEMENT - COMMON MISTAKES:
+
+❌ WRONG - Using variable name or "has prepared":
+    print(f"{self.name} has prepared {num_qubits} qubits.")
+    print(f"Prepared {len(self.quantum_states)} qubits")
+    
+✅ CORRECT - Use "prepared" + len():
+    print(f"{self.name} prepared {len(self.quantum_states)} qubits")
+
+===============================================================================
+🔴 CRITICAL BB84_RECONCILE_BASES MANDATORY REQUIREMENTS:
+===============================================================================
+
+1. VARIABLE NAMES (MANDATORY):
+   - Result list: MUST be "corresponding_bits" (NOT "bits", "matching_bits", "sifted_bits")
+   - Loop variables: MUST be "i, (alice_basis, bob_basis)" (NOT "idx, (a, b)")
+
+2. TOTAL COMPARISONS (MANDATORY):
+   MUST calculate: total_comparisons = min(len(alice_bases), len(bob_bases))
+   ❌ DO NOT use len(alice_bases) directly in print
+
+3. PRINT FORMAT (MANDATORY):
+   MUST use: print(f"Matches found: {{matches_found}} / {{total_comparisons}} ...")
+   Where matches_found = len(matching_indices)
+
+===============================================================================
+🔴 CRITICAL BB84_ESTIMATE_ERROR_RATE MANDATORY REQUIREMENTS:
+===============================================================================
+
+1. VARIABLE NAMES (MANDATORY):
+   - Loop variable for reference bits: MUST be "reference_bit" (NOT "reference", "ref", "ref_bit")
+   - Loop pattern: MUST be "for position, reference_bit in zip(sample_positions, reference_bits):"
+
+===============================================================================
+🔴 CRITICAL PROCESS_RECEIVED_QBIT MANDATORY REQUIREMENTS:
+===============================================================================
+
+1. VARIABLE NAMES (MANDATORY):
+   - Measurement basis variable: MUST be "basis" (NOT "measurement_basis", "meas_basis")
+
+2. QUANTUM STATE MEASUREMENT (MANDATORY PATTERN):
+   MUST use explicit if-elif for each state (NOT int() parsing):
+   
+   if qbit == "|0⟩":
+       outcome = 0
+   elif qbit == "|1⟩":
+       outcome = 1
+   elif qbit == "|+⟩":
+       outcome = 0
+   elif qbit == "|-⟩":
+       outcome = 1
+   else:
+       outcome = random.randint(0, 1)
+   
+   ❌ DO NOT use: outcome = int(qbit[2])  (THIS IS WRONG!)
+   ❌ DO NOT use: if qbit in ["|0⟩", "|1⟩"]: outcome = int(...)
+
+3. MEASUREMENT LOGIC (MANDATORY):
+   - If basis == 0 (rectilinear): deterministic for |0⟩/|1⟩, random for |+⟩/|-⟩
+   - If basis == 1 (diagonal): deterministic for |+⟩/|-⟩, random for |0⟩/|1⟩
+
+===============================================================================
+🔴 CRITICAL BB84_SEND_QUBITS MANDATORY REQUIREMENTS - FOLLOW EXACTLY:
+===============================================================================
+
+When generating bb84_send_qubits, you MUST use these EXACT variable names and patterns:
+
+1. VARIABLE NAMES (MANDATORY - DO NOT CHANGE):
+   - Loop variable for random bit: MUST be "bit" (NOT "random_bit")
+   - Loop variable for basis: MUST be "basis" (NOT "measurement_basis")
+   - Loop variable for encoded state: MUST be "state" (NOT "encoded_state", "quantum_state", "encoded_qubit")
+   - Instance list for bases: MUST be "self.measurement_bases" (NOT "self.bases", "self.received_bases")
+
+2. QUANTUM STATE ENCODING (MANDATORY PATTERN):
+   MUST use this exact if-else structure with string literals:
+   
+   if basis == 0:
+       state = "|0⟩" if bit == 0 else "|1⟩"
+   else:
+       state = "|+⟩" if bit == 0 else "|-⟩"
+   
+   ❌ DO NOT use f-strings: state = f"|{{bit}}⟩"  (THIS IS WRONG!)
+   ❌ DO NOT use calculations: state = f"|{{bit+1}}⟩"  (THIS IS WRONG!)
+   ❌ DO NOT use ternary with f-strings (THIS IS WRONG!)
+
+3. PRINT STATEMENTS (MANDATORY FORMAT):
+   - First print: print(f"{{self.name}} is preparing {{num_qubits}} qubits.")
+   - Last print: print(f"{{self.name}} prepared {{len(self.quantum_states)}} qubits")
+   ❌ DO NOT use "has prepared" or "prepared {{num_qubits}}" in the final print
+
+4. LIST INITIALIZATION (MANDATORY):
+   Must clear these THREE lists at the start:
+   - self.random_bits = []
+   - self.measurement_bases = []  (NOT self.bases or self.received_bases!)
+   - self.quantum_states = []
+
+5. LOOP STRUCTURE (MANDATORY):
+   Use: for _ in range(num_qubits):
+   Generate bit and basis using: random.randint(0, 1)
+   Append in this order: bit to random_bits, basis to measurement_bases, state to quantum_states
 """
             
         else:  # B92
@@ -236,6 +372,7 @@ AVAILABLE INSTANCE VARIABLES (B92):
 - self.sifted_key: List of sifted key bits after post-processing
 - self.random_bits: Additional bit storage (if needed)
 - self.measurement_outcomes: Additional outcome storage (if needed)
+- self.received_bases: List of bases used during reception
 
 COMMON OPERATIONS:
 - Generate random bit: random.randint(0, 1)
@@ -243,13 +380,115 @@ COMMON OPERATIONS:
 - B92 encoding: bit 0→'|0⟩', bit 1→'|+⟩' (only 2 non-orthogonal states)
 - B92 measurement: outcome 1 is conclusive, outcome 0 is inconclusive
 - Sifting: Keep only conclusive results where outcome=1
+
+B92 VALIDATION - COMMON MISTAKES:
+
+❌ WRONG validation patterns:
+    if not (0 <= bit < 2):                      # Too complex
+    if bit != 0 and bit != 1:                   # Verbose
+    
+✅ CORRECT validation:
+    if bit not in [0, 1]:
+        raise ValueError(f"Invalid bit value: {bit}. Must be 0 or 1.")
+
+===============================================================================
+🔴 CRITICAL B92_SEND_QUBITS MANDATORY REQUIREMENTS:
+===============================================================================
+
+1. VARIABLE NAMES (MANDATORY):
+   - Random bit variable: MUST be "random_bit" (NOT "bit")
+   - Prepared qubit variable: MUST be "qubit" (NOT "prepared_qubit", "quantum_state")
+
+2. PRINT FORMAT (MANDATORY):
+   - First print: print(f"\\n{{self.name}} is preparing to send {{num_qubits}} qubits using B92 protocol...")
+   - Last print: print(f"\\n{{self.name}} prepared {{num_qubits}} qubits successfully!")
+   - Sample data: print(f"Random bits (first 10): {{self.sent_bits[:10]}}")
+
+===============================================================================
+🔴 CRITICAL B92_SIFTING MANDATORY REQUIREMENTS:
+===============================================================================
+
+1. VARIABLE NAMES (MANDATORY):
+   - Sifted indices list: MUST be "sifted_indices" (NOT "conclusive_indices", "matching_indices")
+   - Use local variable "sifted_key" in print (NOT "self.sifted_key")
+
+2. F-STRING FORMAT (CRITICAL):
+   ❌ NEVER use double braces: {{sifted_key[:10]}}  (THIS IS WRONG!)
+   ✅ ALWAYS use single braces: {sifted_key[:10]}
+   - print(f"Sifted key (first 10): {{sifted_key[:10]}}")  <- WRONG!
+   - print(f"Sifted key (first 10): {sifted_key[:10]}")   <- CORRECT!
+
+===============================================================================
+🔴 CRITICAL B92_PREPARE_QUBIT MANDATORY REQUIREMENTS:
+===============================================================================
+
+1. VALIDATION (MANDATORY):
+   MUST use: if bit not in [0, 1]:
+   ❌ DO NOT use: if not (0 <= bit < 2)  (THIS IS WRONG!)
+
+===============================================================================
+🔴 CRITICAL B92_PROCESS_RECEIVED_QBIT MANDATORY REQUIREMENTS:
+===============================================================================
+
+1. MEASUREMENT CALL (MANDATORY):
+   MUST call: self.b92_measure_qubit(qbit)
+   ❌ DO NOT call: self.measurement()  (THIS IS WRONG!)
+
+B92 METHOD CALLS - COMMON MISTAKES:
+
+❌ WRONG method names:
+    outcome, basis = self.measurement(qbit)     # No such method!
+    
+✅ CORRECT method names:
+    outcome, basis = self.b92_measure_qubit(qbit)
+
+B92 b92_send_qubits - PRINT PATTERNS:
+
+❌ WRONG - Missing newlines or protocol name:
+    print(f"{self.name} is preparing {num_qubits} qubits for transmission...")
+    print(f"{self.name} has successfully prepared and sent {num_qubits} qubits!")
+    print(f"First 10 transmitted bits: {self.sent_bits[:10]}")
+    
+✅ CORRECT - With newlines and proper labels:
+    print(f"\n{self.name} is preparing to send {num_qubits} qubits using B92 protocol...")
+    print(f"\n{self.name} prepared {num_qubits} qubits successfully!")
+    print(f"Random bits (first 10): {self.sent_bits[:10]}")
+    print(f"Prepared qubits (first 10): {self.prepared_qubits[:10]}")
+
+B92 b92_sifting - PRINT PATTERNS:
+
+❌ WRONG - Using double braces or wrong labels:
+    print(f"First 10 bits of sifted key: {{self.sifted_key[:10]}}")  # Double braces!
+    print(f"Conclusive results count: {conclusive_count}")           # Wrong var name
+    print(f"Sifting efficiency: {efficiency:.2%}")                   # Should be 2f not 2%
+    
+✅ CORRECT - Single braces and right format:
+    print(f"Sifted key (first 10): {sifted_key[:10]}")              # Local variable!
+    print(f"Conclusive results: {conclusive_count}")                 
+    print(f"Sifting efficiency: {sifting_efficiency:.2%}")
+
+B92 b92_estimate_error_rate - COMPLETION MESSAGE:
+
+❌ WRONG - Generic message:
+    print(f"\n{self.name} finished calculating error rate.")
+    print(f"Calculated error rate: {{error_rate:.2%}}")              # Double braces!
+    
+✅ CORRECT - Protocol-specific message:
+    print(f"\n{self.name} B92 error rate estimation complete!")
+    print(f"Calculated error rate: {error_rate:.2%}")
 """
         
         return style_guide, variables
 
-    def answer_question(self, query: str, student_progress: int, persona_prompt: str) -> str:
+    def answer_question(self, query: str, student_progress: int, persona_prompt: str, skeleton_code: Optional[str] = None) -> str:
         """
         Answers student questions: generates QKD code, explains concepts, or summarizes logs
+        
+        Args:
+            query: Student's question or prompt
+            student_progress: Current lesson number
+            persona_prompt: System persona
+            skeleton_code: Optional skeleton function to complete (e.g., "def method_name(self, param):")
         """
         query_lower = query.lower()
         
@@ -275,6 +514,11 @@ COMMON OPERATIONS:
         if is_explanation_request:
             is_code_request = False
         
+        # If skeleton is provided, force code generation mode
+        if skeleton_code:
+            is_code_request = True
+            is_explanation_request = False
+        
         # Detect if this is a log summary request
         is_log_summary = any(keyword in query_lower for keyword in [
             'log', 'summary', 'summarize', 'analyze', 'what happened'
@@ -289,14 +533,17 @@ COMMON OPERATIONS:
             # Get protocol-specific guidelines
             style_guide, variables = self._get_protocol_guidelines(protocol)
             
-            # Enhanced prompt for better code generation with guidelines instead of examples
-            prompt = f"""You are a Python code generator for quantum key distribution protocols.
+            if skeleton_code:
+                # Use skeleton function to complete the code
+                prompt = f"""You are a Python code generator for quantum key distribution protocols.
 
 CRITICAL OUTPUT RULES:
-1. OUTPUT ONLY THE METHOD CODE - NO EXPLANATIONS, NO MARKDOWN, NO TAGS
-2. Start directly with "def method_name(self, ...):"
-3. End with the return statement - nothing after
-4. NO text before or after the method definition
+1. OUTPUT ONLY THE COMPLETED METHOD CODE - NO EXPLANATIONS, NO MARKDOWN, NO TAGS
+2. Keep the EXACT skeleton function signature provided
+3. Fill in the method body based on the prompt
+4. End with the return statement - nothing after
+5. NO text before or after the method definition
+6. FOLLOW THE EXACT CODE PATTERNS AND VARIABLE NAMES specified below
 
 ABSOLUTELY FORBIDDEN:
 - No ``` or markdown blocks
@@ -305,6 +552,8 @@ ABSOLUTELY FORBIDDEN:
 - No test cases or example usage after the method
 - No class definitions
 - No explanatory comments outside the method body
+- NO double braces {{}} in f-strings (use single braces {{}})
+- NO f-string interpolation for quantum states (use if-else with string literals)
 
 {style_guide}
 
@@ -312,10 +561,60 @@ ABSOLUTELY FORBIDDEN:
 
 PROTOCOL: {protocol}
 
+🚨 ABSOLUTELY CRITICAL REQUIREMENTS - READ CAREFULLY:
+1. Use ONLY the exact variable names specified in the "MANDATORY REQUIREMENTS" section above
+2. For bb84_send_qubits: Use "bit", "basis", "state" (NOT random_bit, encoded_state, etc.)
+3. For quantum encoding: Use if-else with string literals (NOT f-strings like f"|{{bit}}⟩")
+4. For instance lists: Use "self.measurement_bases" (NOT self.bases or self.received_bases)
+5. DO NOT improvise or change any variable names from what is specified
+6. FOLLOW THE EXACT encoding pattern shown: if basis == 0: state = "|0⟩" if bit == 0 else "|1⟩"
+
+SKELETON FUNCTION TO COMPLETE:
+{skeleton_code}
+
+STUDENT'S PROMPT: {query}
+
+Generate code that STRICTLY follows ALL the mandatory requirements above.
+Output ONLY the completed method starting with "def" and ending with "return":"""
+            else:
+                # Generate method from scratch
+                prompt = f"""You are a Python code generator for quantum key distribution protocols.
+
+CRITICAL OUTPUT RULES:
+1. OUTPUT ONLY THE METHOD CODE - NO EXPLANATIONS, NO MARKDOWN, NO TAGS
+2. Start directly with "def method_name(self, ...):"
+3. End with the return statement - nothing after
+4. NO text before or after the method definition
+5. FOLLOW THE EXACT CODE PATTERNS AND VARIABLE NAMES specified below
+
+ABSOLUTELY FORBIDDEN:
+- No ``` or markdown blocks
+- No [PYTHON], [CODE], or any XML/bracket tags  
+- No "Here's the code" or "This method does..." explanations
+- No test cases or example usage after the method
+- No class definitions
+- No explanatory comments outside the method body
+- NO double braces {{}} in f-strings (use single braces {{}})
+- NO f-string interpolation for quantum states (use if-else with string literals)
+
+{style_guide}
+
+{variables}
+
+PROTOCOL: {protocol}
+
+🚨 ABSOLUTELY CRITICAL REQUIREMENTS - READ CAREFULLY:
+1. Use ONLY the exact variable names specified in the "MANDATORY REQUIREMENTS" section above
+2. For bb84_send_qubits: Use "bit", "basis", "state" (NOT random_bit, encoded_state, etc.)
+3. For quantum encoding: Use if-else with string literals (NOT f-strings like f"|{{bit}}⟩")
+4. For instance lists: Use "self.measurement_bases" (NOT self.bases or self.received_bases)
+5. DO NOT improvise or change any variable names from what is specified
+6. FOLLOW THE EXACT encoding pattern shown: if basis == 0: state = "|0⟩" if bit == 0 else "|1⟩"
+
 STUDENT'S REQUEST: {query}
 
-Based on the style guidelines and available variables above, generate a clean, working method.
-Remember: Output ONLY the method definition starting with "def" and ending with "return":"""
+Generate code that STRICTLY follows ALL the mandatory requirements above.
+Output ONLY the method definition starting with "def" and ending with "return":"""
             
         elif is_log_summary:
             # Log analysis mode
@@ -339,7 +638,7 @@ Analysis:"""
                 query=query, max_lesson_number=student_progress, num_results=3
             )
             context_str = "\n\n".join(context_chunks)
-            
+
             if context_str:
                 prompt = f"""{persona_prompt}
 

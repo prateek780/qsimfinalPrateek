@@ -141,8 +141,23 @@ def init_tracker(student_id, use_firebase=True):
     _tracker = NotebookTracker(student_id, use_firebase=use_firebase)
     _session_id = _tracker.session_id
     
+    # Save tracking state to file for JupyterLab extension access
+    import json
+    tracking_state = {
+        "student_id": student_id,
+        "session_id": _session_id,
+        "initialized": True,
+        "last_updated": datetime.now().isoformat()
+    }
+    try:
+        with open('.tracking_state.json', 'w') as f:
+            json.dump(tracking_state, f, indent=2)
+    except Exception as e:
+        print(f"Warning: Could not save tracking state: {e}")
+    
     if _tracker.use_firebase:
         print(f"Tracking initialized for {student_id} (Session: {_session_id})")
+        print("AI agent interactions will now be tracked in Firebase")
     else:
         print(f"Tracking initialized for {student_id} (Local mode)")
     
@@ -172,6 +187,14 @@ def track(protocol, code, output=""):
 def get_tracker():
     """Get the current tracker instance"""
     return _tracker
+
+def get_tracking_context():
+    """Get current student_id and session_id for AI tracking"""
+    return {
+        'student_id': _student_id,
+        'session_id': _session_id,
+        'tracker_initialized': _tracker is not None
+    }
 
 def verify_file_updated(protocol):
     """Check if implementation file exists and was recently modified"""

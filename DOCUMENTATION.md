@@ -55,13 +55,84 @@ docker-compose up -d
 
 ## Getting Started
 
-### Open Project in VS Code or Cursor
+### Option 1: Using JupyterLab (Recommended with AI Assistant)
+
+#### Step 1: Start JupyterLab
+
+Open your terminal/command prompt in the project directory and run:
+
+```bash
+jupyter lab
+```
+
+**What Happens:**
+- JupyterLab will start on `http://localhost:8888`
+- Your browser will automatically open
+- You'll see the JupyterLab interface with file browser on the left
+
+#### Step 2: Open the Notebook
+
+1. In the **file browser** (left sidebar), locate `qsimnotebook.ipynb`
+2. **Double-click** the file to open it
+3. The notebook will open in the main area
+
+#### Step 3: Activate the AI Code Assistant
+
+Look at the **right sidebar** of JupyterLab. You should see:
+
+**QKD Code Assistant** panel with:
+- Chat interface
+- Input box at the bottom
+- "Ask me to generate BB84/B92 code or explain concepts..." placeholder
+
+**If you don't see it:**
+1. Click the **puzzle piece icon** (🧩) on the right sidebar
+2. The AI assistant panel should appear
+
+#### Step 4: Using the AI Assistant
+
+The AI assistant can help you with:
+
+**✅ Generate Code:**
+```
+write the __init__ method for BB84
+
+def __init__(self, name):
+```
+
+**✅ Explain Concepts:**
+```
+explain how BB84 works
+```
+
+```
+explain the code for bb84_send_qubits
+```
+
+**✅ Analyze Simulation Logs:**
+```
+summarize my QKD simulation logs
+```
+
+**What Gets Tracked:**
+- Every question you ask the AI
+- Every code snippet the AI generates
+- Whether you requested code or explanation
+- All stored in Firebase under your student ID
+
+---
+
+### Option 2: Using VS Code or Cursor
 
 1. Open VS Code or Cursor IDE
 2. **File** → **Open Folder**
 3. Select `qsimnotebookfinal` folder
 4. Locate `qsimnotebook.ipynb` file in the folder
 5. Click on the notebook file to open it
+
+> **Note:** The AI Code Assistant is only available in JupyterLab (Option 1)
+
+---
 
 ### Initialize Student Tracking
 
@@ -85,6 +156,9 @@ Step 2/3: Setting up student record (your_student_id)...
 Step 3/3: Creating session...
 SUCCESS: Firebase fully connected - Session ID: abc123...
 
+Tracking initialized for your_student_id (Session: abc123...)
+AI agent interactions will now be tracked in Firebase
+
 TRACKING STARTED FOR STUDENT: your_student_id
 ```
 
@@ -92,8 +166,11 @@ TRACKING STARTED FOR STUDENT: your_student_id
 
 - **Creates Account** - Sets up your student record in Firebase cloud database
 - **Starts Session** - Begins a new coding session with unique timestamp ID
-- **Enables Tracking** - Starts recording all your code changes with timestamps
+- **Enables Code Tracking** - Records all your code changes with timestamps
+- **Enables AI Tracking** - Logs every AI assistant interaction (questions + responses)
 - **Background Monitor** - Automatically watches for file changes every 3 seconds
+
+> **Important:** After running this cell, the AI Code Assistant in JupyterLab will automatically link to your student ID
 
 ---
 
@@ -117,14 +194,81 @@ TRACKING STARTED FOR STUDENT: your_student_id
 | Step | Action | Details |
 |------|--------|---------|
 | **1** | **Read Prompt** | Review cell instructions - each cell has detailed explanation |
-| **2** | **Generate Code** | Use AI assistant (Copilot/Cursor) to help write implementation |
-| **3** | **Save Code** | `%save -f student_bb84_impl.py <cell_number>` |
-| **4** | **Track Code** | `notebook_tracker.track_bb84()` - uploads to Firebase with timestamp |
-| **5** | **Wait** | Pause 5 seconds - let background watcher capture changes |
+| **2** | **Generate Code** | Use **QKD Code Assistant** in JupyterLab sidebar (recommended) OR your IDE's AI (Copilot/Cursor) |
+| **3** | **Save Code** | Use `%%vibe_code` magic command (auto-saves) OR manual `%save` |
+| **4** | **Track Code** | Automatic with `%%vibe_code` OR manual `notebook_tracker.track_bb84()` |
+| **5** | **Verify** | Run the visualization cell to test your implementation |
 
 ---
 
-### Detailed Example
+### Method 1: Using JupyterLab AI Assistant (Recommended)
+
+This method automatically saves and tracks your code!
+
+#### STEP 1: Read the Prompt in the Notebook
+
+Each method cell contains a detailed prompt explaining what to implement.
+
+#### STEP 2: Ask the AI Assistant
+
+In the **QKD Code Assistant** panel (right sidebar), paste your prompt + skeleton function:
+
+**Example for `__init__` method:**
+```
+Create a constructor that accepts a single parameter for the host's identifier.
+Store this identifier as an instance variable. Initialize five empty list attributes:
+one for storing random binary values, one for preparation bases, one for encoded states,
+one for measurement bases, one for measurement results.
+
+def __init__(self, name):
+```
+
+**The AI will generate:**
+```python
+def __init__(self, name):
+    self.name = name
+    self.random_bits = []
+    self.measurement_bases = []
+    self.quantum_states = []
+    self.received_bases = []
+    self.measurement_outcomes = []
+    print(f"StudentQuantumHost '{self.name}' initialized successfully!")
+```
+
+#### STEP 3: Copy and Run Code in Vibe Code Cell
+
+Paste the generated code into the `%%vibe_code` cell:
+
+```python
+%%vibe_code
+import random
+
+class StudentQuantumHost:
+    def __init__(self, name):
+        self.name = name
+        self.random_bits = []
+        self.measurement_bases = []
+        self.quantum_states = []
+        self.received_bases = []
+        self.measurement_outcomes = []
+        print(f"StudentQuantumHost '{self.name}' initialized successfully!")
+```
+
+**Run the cell** - it will:
+- ✅ Validate syntax
+- ✅ Execute code
+- ✅ Save to `student_bb84_impl.py`
+- ✅ Track in Firebase automatically
+
+**Terminal will show:**
+```
+[AI Tracking] Using student: test123, session: abc123
+[AI Tracking] Successfully logged: xyz789
+```
+
+---
+
+### Method 2: Manual Method (VS Code/Cursor)
 
 #### STEP 1: Read the Prompt
 
@@ -137,7 +281,7 @@ TRACKING STARTED FOR STUDENT: your_student_id
 # 4. Send qubits to Bob through quantum channel
 ```
 
-#### STEP 2: Write Code with AI Help
+#### STEP 2: Write Code with Your IDE's AI
 
 ```python
 class StudentQuantumHost:
@@ -327,24 +471,48 @@ qsimnotebookfinal/simulation_logs/
 - Final key generation statistics
 - All network events during simulation
 
-### Ask the Vibe Coding Agent About Your Logs
+### Ask the QKD Code Assistant About Your Logs
 
-You can interact with the AI agent to analyze and understand your simulation results. Use these example prompts:
+Use the **QKD Code Assistant** panel in JupyterLab (right sidebar) to analyze your simulation results.
 
-"My simulation logs are stored under "qsimnotebookfinal/simulation_logs/" can you analyze the files and answer me according to those logs.."
+**📍 Location:** Right sidebar of JupyterLab → QKD Code Assistant panel
+
+**How to Use:**
+
+1. Type your question in the chat input
+2. The AI will analyze your logs and respond
+3. All interactions are automatically tracked in Firebase
+
+**Example Prompts:**
 
 **Basic Analysis:**
 ```
-"What was my error rate in the last BB84 simulation?"
-"Show me the key generation statistics from my recent run"
-"How many qubits did I send in the last simulation?"
+What was my error rate in the last BB84 simulation?
+```
+```
+Show me the key generation statistics from my recent run
+```
+```
+How many qubits did I send in the last simulation?
 ```
 
 **Debugging Help:**
 ```
-"Why is my error rate higher than expected?"
-"Which methods failed in my last simulation?"
-"What went wrong with basis reconciliation?"
+Why is my error rate higher than expected?
+```
+```
+Which methods failed in my last simulation?
+```
+```
+What went wrong with basis reconciliation?
+```
+
+**Explaining Code:**
+```
+explain the code for bb84_send_qubits
+```
+```
+explain how BB84 basis reconciliation works
 ```
 
 **Learning and Understanding:**
@@ -410,6 +578,8 @@ To visualize a different protocol:
 
 ### What Gets Tracked in Firebase
 
+#### Code Activity Tracking
+
 | Data Type | Description | Example |
 |-----------|-------------|---------|
 | **Code Snapshots** | Every version of your code | Full class implementation |
@@ -418,6 +588,25 @@ To visualize a different protocol:
 | **Lines Removed** | Code you deleted | `-3 lines` |
 | **Time Spent** | Duration per method | `8 minutes on bb84_send_qubits` |
 | **Method Evolution** | Changes to individual methods | Method-level snapshots |
+
+#### AI Interaction Tracking (JupyterLab Only)
+
+| Data Type | Description | Example |
+|-----------|-------------|---------|
+| **Query Text** | Your full question to AI | Full prompt + skeleton function |
+| **Query Lines** | Question split into array | Each line stored separately |
+| **Response Text** | AI's full response | Generated code or explanation |
+| **Response Lines** | Response split into array | Each line stored separately |
+| **Request Type** | Code generation or explanation | `CODE` or `EXPLANATION` |
+| **Protocol** | Which protocol you asked about | `BB84` or `B92` |
+| **Lines Generated** | How many lines AI wrote | `15 lines` |
+| **Timestamp** | When you asked | `2024-10-14T12:35:00` |
+
+**What This Means:**
+- Every question you ask the AI is saved
+- Every code snippet the AI generates is saved
+- Your instructor can see how you used AI assistance
+- This helps evaluate your learning process, not just final code
 
 ---
 
@@ -579,18 +768,30 @@ Then run the last cell in notebook to visualize the selected protocol.
 | **1** | Install software | `install.bat` or `install_*.sh` | ☐ |
 | **2** | Clone repository | `git clone ...` | ☐ |
 | **3** | Start Docker | `docker-compose up -d` | ☐ |
-| **4** | Open in VS Code/Cursor | File → Open Folder | ☐ |
-| **5** | Open notebook file | Click on `qsimnotebook.ipynb` | ☐ |
+| **4** | Start JupyterLab (recommended) | `jupyter lab` in terminal | ☐ |
+| **5** | Open notebook file | Double-click `qsimnotebook.ipynb` in file browser | ☐ |
 | **6** | Run tracking setup | Cell 1 → Enter student ID | ☐ |
-| **7** | Implement BB84 (4 methods) | Write, save, track each method | ☐ |
-| **8** | Visualize BB84 | Run last cell in notebook | ☐ |
-| **9** | Switch to B92 | `python switch_to_b92.py` | ☐ |
-| **10** | Implement B92 (4 methods) | Write, save, track each method | ☐ |
-| **11** | Visualize B92 | Run last cell in notebook | ☐ |
+| **7** | Check AI Assistant | Look for "QKD Code Assistant" in right sidebar | ☐ |
+| **8** | Implement BB84 (4 methods) | Use AI assistant + `%%vibe_code` cells | ☐ |
+| **9** | Visualize BB84 | Run last cell in notebook | ☐ |
+| **10** | Switch to B92 | `python switch_to_b92.py` | ☐ |
+| **11** | Implement B92 (4 methods) | Use AI assistant + `%%vibe_code` cells | ☐ |
+| **12** | Visualize B92 | Run last cell in notebook | ☐ |
 
 ---
 
 ### Essential Commands Reference
+
+#### JupyterLab Commands
+
+| Task | Command | Notes |
+|------|---------|-------|
+| Start JupyterLab | `jupyter lab` | Opens browser automatically |
+| Stop JupyterLab | `Ctrl+C` in terminal (twice) | Or close terminal window |
+| Restart JupyterLab | Stop, then `jupyter lab` again | Needed after extension updates |
+| Check if running | Open `http://localhost:8888/lab` | Should show JupyterLab interface |
+
+---
 
 #### Docker Commands
 
@@ -618,6 +819,17 @@ Then run the last cell in notebook to visualize the selected protocol.
 
 #### Notebook Operations
 
+**JupyterLab Method (Automatic):**
+
+| Task | Command | Notes |
+|------|---------|-------|
+| Auto-save & track code | `%%vibe_code` | At top of cell with your code |
+| Ask AI for help | Type in "QKD Code Assistant" panel | Right sidebar |
+| Visualize protocol | Run last cell in notebook | Shows QKD simulation |
+| View simulation logs | Check `simulation_logs/` folder | Automatic after each run |
+
+**Manual Method (VS Code/Cursor):**
+
 | Task | Command | Notes |
 |------|---------|-------|
 | Save BB84 code | `%save -f student_bb84_impl.py <cell#>` | In notebook cell |
@@ -626,7 +838,6 @@ Then run the last cell in notebook to visualize the selected protocol.
 | Track B92 | `notebook_tracker.track_b92()` | After saving |
 | Visualize protocol | Run last cell in notebook | Shows QKD simulation |
 | View simulation logs | Check `simulation_logs/` folder | Automatic after each run |
-| Analyze logs | Ask vibe coding agent | Use example prompts from guide |
 
 ---
 
@@ -635,10 +846,12 @@ Then run the last cell in notebook to visualize the selected protocol.
 | Category | Tip |
 |----------|-----|
 | **Setup** | Always run tracking setup (Cell 1) before coding |
-| **Saving** | Use `%save` immediately after completing each method |
-| **Tracking** | Run tracking cell after every save |
-| **Timing** | Wait 5 seconds between methods for background watcher |
-| **AI Usage** | Review and understand AI-generated code before saving |
+| **Environment** | Use JupyterLab for access to AI Code Assistant |
+| **AI Assistant** | Check right sidebar for "QKD Code Assistant" panel |
+| **Auto-Save** | Use `%%vibe_code` cells - they save and track automatically |
+| **AI Questions** | Copy prompt + skeleton function to AI panel for best results |
+| **AI Tracking** | All your AI questions/answers are saved to Firebase |
+| **AI Usage** | Review and understand AI-generated code before using it |
 | **Testing** | Run visualization (last cell) after completing all methods |
 | **Switching** | Use `python switch_to_*.py` commands to change protocols |
 | **Debugging** | Check troubleshooting section if errors occur |
@@ -647,19 +860,35 @@ Then run the last cell in notebook to visualize the selected protocol.
 
 ## Frequently Asked Questions
 
+### General Questions
+
 | Question | Answer |
 |----------|--------|
 | **Do I need internet connection?** | Yes, Firebase requires internet to save your work |
 | **What if I make a mistake?** | Firebase tracks all versions - your instructor can see your progress |
 | **Can I work on BB84 and B92 simultaneously?** | No, complete BB84 first, then switch to B92 using `python switch_to_b92.py` |
-| **How do I know tracking is working?** | You'll see "Tracked BB84 cell: X lines" message |
-| **What if cell numbers change?** | Always check current cell number in `[brackets]` before using `%save` |
+| **How do I know tracking is working?** | You'll see "Tracked BB84 cell: X lines" message or Terminal shows "[AI Tracking] Successfully logged" |
+| **What if cell numbers change?** | With `%%vibe_code`, no need to track cell numbers - it auto-saves |
 | **Can I edit after tracking?** | Yes, background watcher captures all changes automatically |
 | **How do I visualize my implementation?** | Run the last cell in the notebook |
 | **What if Firebase connection is slow?** | First connection takes 10-30 seconds - this is normal |
 | **Where are my simulation logs saved?** | In `simulation_logs/` folder in your project directory |
-| **How do I analyze my simulation results?** | Ask the vibe coding agent questions about your logs (see examples in Visualization section) |
 | **Can I delete old simulation logs?** | Yes, they're local files - but keep recent ones for analysis |
+
+### JupyterLab & AI Assistant Questions
+
+| Question | Answer |
+|----------|--------|
+| **Do I have to use JupyterLab?** | No, but it's recommended for access to the AI Code Assistant |
+| **Where is the AI Assistant?** | Right sidebar in JupyterLab → "QKD Code Assistant" panel |
+| **Can I use the AI in VS Code?** | No, the AI assistant only works in JupyterLab. Use Copilot/Cursor instead |
+| **Are my AI questions tracked?** | Yes! Every question and response is saved to Firebase |
+| **Can the instructor see my AI questions?** | Yes, all AI interactions are logged with your student ID |
+| **What if AI doesn't give good code?** | Review and fix the code - your edits are also tracked |
+| **How do I ask the AI for code?** | Copy the prompt + skeleton function from notebook, paste in AI panel |
+| **Can I ask AI to explain things?** | Yes! Ask "explain how BB84 works" or "explain this code" |
+| **What if AI panel doesn't appear?** | Click puzzle icon (🧩) on right sidebar to show it |
+| **Does AI work offline?** | No, it needs connection to Ollama server (runs on lab server) |
 
 ---
 
@@ -672,16 +901,18 @@ Then run the last cell in notebook to visualize the selected protocol.
 | **1** | Install → Run platform-specific installer |
 | **2** | Clone → Get the code repository |
 | **3** | Docker → Start backend services |
-| **4** | Open → Open notebook file in VS Code/Cursor |
-| **5** | Setup → Initialize tracking with student ID |
-| **6** | Implement → Write BB84 methods (4 total) |
-| **7** | Track → Save and upload each method to Firebase |
-| **8** | Visualize → Run last cell to see BB84 in action |
-| **9** | Switch → Run `python switch_to_b92.py` |
-| **10** | Implement → Write B92 methods (4 total) |
-| **11** | Track → Save and upload each method to Firebase |
-| **12** | Visualize → Run last cell to see B92 in action |
-| **13** | Complete → All work automatically tracked in Firebase |
+| **4** | JupyterLab → Start with `jupyter lab` |
+| **5** | Open → Double-click `qsimnotebook.ipynb` |
+| **6** | Setup → Initialize tracking with student ID |
+| **7** | AI Assistant → Check right sidebar for "QKD Code Assistant" |
+| **8** | Implement → Use AI + `%%vibe_code` for BB84 methods (4 total) |
+| **9** | Track → Automatic with each `%%vibe_code` run |
+| **10** | Visualize → Run last cell to see BB84 in action |
+| **11** | Switch → Run `python switch_to_b92.py` |
+| **12** | Implement → Use AI + `%%vibe_code` for B92 methods (4 total) |
+| **13** | Track → Automatic with each `%%vibe_code` run |
+| **14** | Visualize → Run last cell to see B92 in action |
+| **15** | Complete → All code + AI interactions tracked in Firebase |
 
 ---
 
@@ -690,12 +921,14 @@ Then run the last cell in notebook to visualize the selected protocol.
 | Feature | Benefit |
 |---------|---------|
 | **Automatic Tracking** | No need to manually submit - everything saves automatically to Firebase |
+| **AI Code Assistant** | Integrated AI panel helps generate and explain QKD code |
+| **AI Tracking** | Every AI interaction logged - shows how you learn |
 | **Version History** | All code versions preserved with timestamps |
 | **Time Analytics** | See how long you spent on each method |
-| **AI-Assisted** | Use Copilot/Cursor to help write code |
 | **Real-Time Monitoring** | Instructor can see your progress live |
 | **Fair Assessment** | Your learning process is visible, not just final code |
 | **Interactive Visualization** | See your QKD implementation in action |
+| **Vibe Coding** | `%%vibe_code` cells auto-save and track in one step |
 
 ---
 

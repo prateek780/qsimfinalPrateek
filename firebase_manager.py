@@ -70,11 +70,14 @@ def get_or_create_student(student_id: str, name: Optional[str] = None, email: Op
     student_ref = db.collection('students').document(student_id)
     
     try:
-        student_doc = student_ref.get(timeout=10)  # 10 second timeout
+        print("  > Checking student record...")
+        student_doc = student_ref.get(timeout=5)  # Reduced to 5 second timeout
         
         if student_doc.exists:
+            print("  > Existing student found")
             return student_doc.to_dict()
         else:
+            print("  > Creating new student record...")
             # Create new student
             student_data = {
                 'student_id': student_id,
@@ -83,10 +86,11 @@ def get_or_create_student(student_id: str, name: Optional[str] = None, email: Op
                 'created_at': firestore.SERVER_TIMESTAMP,
                 'last_activity': firestore.SERVER_TIMESTAMP
             }
-            student_ref.set(student_data)
+            student_ref.set(student_data, timeout=5)
+            print("  > Student record created")
             return student_data
     except Exception as e:
-        print(f"Warning: Firestore timeout or error: {e}")
+        print(f"  > Firestore timeout ({e.__class__.__name__}) - using local mode")
         # Return a minimal student record if Firestore fails
         return {'student_id': student_id, 'name': name or student_id}
 
@@ -99,9 +103,10 @@ def create_session(student_id: str) -> str:
     db = get_firestore()
     
     try:
+        print("  > Creating session...")
         # Update student's last activity (with timeout)
         student_ref = db.collection('students').document(student_id)
-        student_ref.update({'last_activity': firestore.SERVER_TIMESTAMP})
+        student_ref.update({'last_activity': firestore.SERVER_TIMESTAMP}, timeout=5)
         
         # Create session
         session_data = {
@@ -111,11 +116,12 @@ def create_session(student_id: str) -> str:
         }
         
         session_ref = student_ref.collection('sessions').document()
-        session_ref.set(session_data)
+        session_ref.set(session_data, timeout=5)
         
+        print(f"  > Session created: {session_ref.id}")
         return session_ref.id
     except Exception as e:
-        print(f"Warning: Session creation error: {e}")
+        print(f"  > Session timeout ({e.__class__.__name__}) - using local session")
         # Generate a fallback session ID if Firestore fails
         from datetime import datetime
         return f"local_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -218,6 +224,71 @@ def save_activity_log(
     log_ref.set(log_data)
     
     return log_ref.id
+
+
+def log_ai_interaction(
+    student_id: str,
+    session_id: str,
+    query: str,
+    response: str,
+    protocol: str,
+    was_code_request: bool,
+    was_explanation: bool
+) -> str:
+    """
+    Log AI agent interaction to Firebase
+    Returns interaction ID or None if failed
+    """
+    try:
+        db = get_firestore()
+        
+        # Split query and response into lines for better readability
+        query_lines = [line for line in query.split('\n') if line.strip()]
+        response_lines = [line for line in response.split('\n') if line.strip()]
+        
+        # Calculate metrics
+        response_length = len(response)
+        code_lines_generated = 0
+        if was_code_request:
+            # Count non-empty lines
+            code_lines_generated = len(response_lines)
+        
+        interaction_data = {
+            'query_text': query,  # Full query as string
+            'query_lines': query_lines,  # Query split into lines array
+            'response_text': response,  # Full response as string
+            'response_lines': response_lines,  # Response split into lines array
+            'protocol': protocol,
+            'was_code_request': was_code_request,
+            'was_explanation': was_explanation,
+            'response_length': response_length,
+            'code_lines_generated': code_lines_generated,
+            'timestamp': firestore.SERVER_TIMESTAMP,
+            'created_at': datetime.now().isoformat()
+        }
+        
+        # Save to student → session → ai_interactions
+        print(f"  > Saving AI interaction to Firebase...")
+        print(f"    Student: {student_id}")
+        print(f"    Session: {session_id}")
+        print(f"    Protocol: {protocol}")
+        print(f"    Type: {'CODE' if was_code_request else 'EXPLANATION' if was_explanation else 'GENERAL'}")
+        
+        interaction_ref = (db.collection('students').document(student_id)
+                            .collection('sessions').document(session_id)
+                            .collection('ai_interactions').document())
+        
+        interaction_ref.set(interaction_data, timeout=10)
+        
+        print(f"  > AI interaction saved: {interaction_ref.id}")
+        
+        return interaction_ref.id
+    
+    except Exception as e:
+        print(f"  > ERROR saving AI interaction to Firebase: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 
 def get_all_students() -> List[Dict]:
@@ -408,4 +479,8 @@ def analyze_ai_usage(snapshots: List[Dict]) -> List[Dict]:
 #         activity_logs/
 #           {log_id}/
 #             - activity_type, protocol, details, timestamp
+#         ai_interactions/
+#           {interaction_id}/
+#             - query, response, protocol, was_code_request, was_explanation,
+#               response_length, code_lines_generated, timestamp
 
