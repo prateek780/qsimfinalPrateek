@@ -36,14 +36,21 @@ def measure_quantum_state(quantum_state, measurement_basis):
 class EnhancedStudentImplementationBridge:
     """Directly uses StudentQuantumHost from student_bb84_impl.py"""
     
-    def __init__(self, student_alice=None, student_bob=None):
-        if student_alice is None:
+    def __init__(self, student_alice=None, student_bob=None, alice_name=None, bob_name=None):
+        # Support both parameter styles for backwards compatibility
+        if alice_name is not None:
+            print(f"Creating Alice using StudentQuantumHost with name: {alice_name}...")
+            self.student_alice = StudentQuantumHost(alice_name)
+        elif student_alice is None:
             print("Creating Alice using StudentQuantumHost...")
             self.student_alice = StudentQuantumHost("Alice")
         else:
             self.student_alice = student_alice
             
-        if student_bob is None:
+        if bob_name is not None:
+            print(f"Creating Bob using StudentQuantumHost with name: {bob_name}...")
+            self.student_bob = StudentQuantumHost(bob_name)
+        elif student_bob is None:
             print("Creating Bob using StudentQuantumHost...")
             self.student_bob = StudentQuantumHost("Bob")
         else:

@@ -71,8 +71,28 @@ services:
     networks:
       - app-network
 
+  jupyter:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.jupyter
+    container_name: jupyter-lab
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app
+      - jupyter-data:/home/jupyter/.local
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+
 volumes:
   redis-data:
+  jupyter-data:
 
 networks:
   app-network:
