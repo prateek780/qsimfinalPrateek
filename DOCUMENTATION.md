@@ -3,20 +3,25 @@
 > **Welcome!** This guide will walk you through setting up and completing your quantum networking lab assignment. Your work will be automatically tracked and saved to Firebase.
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/prateek780/qsimnotebookfinal)
-[![Python](https://img.shields.io/badge/Python-3.8+-green?logo=python)](https://www.python.org/)
-[![Docker](https://img.shields.io/badge/Docker-Required-blue?logo=docker)](https://www.docker.com/)
+[![Python](https://img.shields.io/badge/Python-3.9+-green?logo=python)](https://www.python.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green?logo=nodedotjs)](https://nodejs.org/)
+[![Docker](https://img.shields.io/badge/Docker-Optional-blue?logo=docker)](https://www.docker.com/)
+[![JupyterLab](https://img.shields.io/badge/JupyterLab-4.4+-orange?logo=jupyter)](https://jupyter.org/)
 
 ---
 
 ## Table of Contents
 
-- [Installation](#installation)
+- [Quick Start (3 Options)](#quick-start-3-options)
+- [Installation Methods](#installation-methods)
+  - [Option 1: Docker (Easiest - Recommended)](#option-1-docker-easiest---recommended)
+  - [Option 2: Auto-Installer (With AI Extension)](#option-2-auto-installer-with-ai-extension)
+  - [Option 3: Manual Installation](#option-3-manual-installation)
 - [Getting Started](#getting-started)
+- [Using the AI Code Assistant (edu_agents)](#using-the-ai-code-assistant-edu_agents)
 - [Implementing BB84 Protocol](#implementing-bb84-protocol)
 - [Implementing B92 Protocol](#implementing-b92-protocol)
 - [Visualizing Your Implementation](#visualizing-your-implementation)
-  - [Understanding Your Simulation Logs](#understanding-your-simulation-logs)
-  - [Ask the Vibe Coding Agent](#ask-the-vibe-coding-agent-about-your-logs)
 - [How Tracking Works](#how-tracking-works)
 - [Troubleshooting](#troubleshooting)
 - [Quick Reference](#quick-reference)
@@ -24,83 +29,466 @@
 
 ---
 
-## Installation
+## Quick Start (3 Options)
 
-### Step 1: Install Required Software
+Choose the method that works best for you:
 
-| Operating System | Command | What It Installs |
-|-----------------|---------|------------------|
-| **Windows** | `install.bat` | Python 3.8+, Jupyter, Docker, Dependencies |
-| **Linux** | `chmod +x install_linux.sh && ./install_linux.sh` | Python 3.8+, Jupyter, Docker, Dependencies |
-| **macOS** | `chmod +x install_mac.sh && ./install_mac.sh` | Python 3.8+, Jupyter, Docker, Dependencies |
+### 🐳 Option 1: Docker (Fastest - 5 Minutes)
+```bash
+docker-compose -f docker-compose.jupyter.yaml up --build
+```
+**Then open:** http://localhost:8888
+- ✅ Everything included (Python, Node.js, JupyterLab, AI extension)
+- ✅ No manual installation needed
+- ✅ Works on Windows, Mac, Linux
 
-### Step 2: Clone the Repository
+### 🔧 Option 2: Auto-Installer (10 Minutes)
+**Windows:** `install.bat`  
+**Linux:** `chmod +x install_linux.sh && ./install_linux.sh`  
+**Mac:** `chmod +x install_mac.sh && ./install_mac.sh`
+- ✅ Installs Python, Node.js, Docker
+- ✅ Builds AI extension automatically
+- ✅ Platform-specific optimization
+
+### 💻 Option 3: Manual (Advanced Users)
+```bash
+pip install -r quantum_requirements.txt
+python -m jupyter lab
+```
+- ⚠️ Requires Python 3.9+ and Node.js 18+
+- ⚠️ AI extension requires manual build
+- ✅ Full control over setup
+
+---
+
+## Installation Methods
+
+### Option 1: Docker (Easiest - Recommended)
+
+Perfect for students who want to start immediately without installing dependencies.
+
+#### Requirements
+- Docker Desktop installed ([Download here](https://www.docker.com/products/docker-desktop))
+- 4 GB RAM available
+- 10 GB disk space
+
+#### Quick Start
+
+**Single Command:**
+```bash
+docker-compose -f docker-compose.jupyter.yaml up --build
+```
+
+**What This Does:**
+- ✅ Installs Python 3.13
+- ✅ Installs Node.js 24.x
+- ✅ Installs all quantum libraries (qutip, qiskit)
+- ✅ Builds edu_agents AI extension automatically
+- ✅ Starts JupyterLab on port 8888
+
+**Access:**
+- JupyterLab: http://localhost:8888
+- No password required
+- AI assistant in left sidebar
+
+**First build:** 5-10 minutes (downloads and builds everything)  
+**Subsequent starts:** ~10 seconds
+
+#### Docker Management
+
+**Stop the container:**
+```bash
+docker-compose -f docker-compose.jupyter.yaml down
+```
+
+**View logs:**
+```bash
+docker-compose -f docker-compose.jupyter.yaml logs -f jupyter
+```
+
+**Restart (after code changes):**
+```bash
+docker-compose -f docker-compose.jupyter.yaml restart
+```
+
+**Rebuild completely:**
+```bash
+docker-compose -f docker-compose.jupyter.yaml up --build --force-recreate
+```
+
+#### Full Stack Docker (Backend + Redis + Jupyter)
+
+If you need the complete simulation backend:
+
+```bash
+docker-compose up --build
+```
+
+**Access points:**
+- JupyterLab: http://localhost:8888
+- Python API: http://localhost:8000
+- Redis Commander: http://localhost:8081
+- Caddy Proxy: http://localhost:8001
+
+---
+
+### Option 2: Auto-Installer (With AI Extension)
+
+Automated installers that set up everything including the AI coding assistant.
+
+#### What Gets Installed
+
+All platforms install:
+- ✅ **Python 3.9+** (3.13 on Windows/Mac, 3.11+ on Linux)
+- ✅ **Node.js 18+** (24.x LTS) - **NEW!** Required for AI extension
+- ✅ **Docker Desktop** (optional, for backend services)
+- ✅ **JupyterLab 4.4+** with extensions
+- ✅ **edu_agents extension** - AI coding assistant (built automatically)
+- ✅ **All quantum libraries** (qutip, qiskit, numpy, scipy, matplotlib)
+- ✅ **faiss-cpu** - Vector database for AI features
+
+#### Windows Installation
+
+**Method 1: Run installer (Recommended)**
+```cmd
+install.bat
+```
+
+Or with PowerShell:
+```powershell
+.\install.ps1
+```
+
+**Method 2: Direct installer**
+```cmd
+auto_installer_windows.bat
+```
+
+**What It Does:**
+1. Checks for winget (Windows Package Manager)
+2. Installs Python 3.13 if not present
+3. Installs Node.js 24.x LTS if not present
+4. Installs Docker Desktop if not present
+5. Installs all Python dependencies
+6. Navigates to `.plugins/edu_agent_plugin`
+7. Runs `npm install` (extension dependencies)
+8. Runs `pip install -e .` (Python package)
+9. Installs `faiss-cpu` (AI vector database)
+10. Builds extension: `jupyter labextension build .`
+11. Enables extension: `jupyter server extension enable edu_agents`
+12. Verifies all installations
+
+**Time:** 15-20 minutes on first run
+
+#### Linux Installation
+
+```bash
+chmod +x install_linux.sh
+./install_linux.sh
+```
+
+**Supported distributions:**
+- Ubuntu 18.04+
+- Debian 10+
+- Fedora 35+
+- CentOS 8+
+- Arch Linux
+- Manjaro
+
+**What It Does:**
+1. Detects your Linux distribution
+2. Updates system packages
+3. Installs Python 3.11+ via package manager
+4. Installs Node.js 24.x from NodeSource repository
+5. Installs Docker + Docker Compose from official repo
+6. Adds user to docker group
+7. Installs all Python dependencies
+8. Builds and installs edu_agents extension
+9. Verifies installations
+
+**Time:** 15-25 minutes depending on distribution
+
+**Important:** After installation, log out and log back in for docker group changes to take effect.
+
+#### Mac Installation
+
+```bash
+chmod +x install_mac.sh
+./install_mac.sh
+```
+
+**Supports:**
+- macOS 10.15 (Catalina) or later
+- Intel Macs
+- Apple Silicon (M1/M2/M3)
+
+**What It Does:**
+1. Checks/installs Homebrew
+2. Updates Homebrew
+3. Installs Python 3.13 via Homebrew
+4. Installs Node.js 24.x via Homebrew
+5. Installs Docker Desktop via Homebrew Cask
+6. Prompts to start Docker Desktop
+7. Installs all Python dependencies
+8. Builds and installs edu_agents extension
+9. Verifies installations
+
+**Time:** 15-30 minutes (Homebrew installation takes time)
+
+---
+
+### Option 3: Manual Installation
+
+For advanced users who want full control.
+
+#### Prerequisites
+
+Install these manually:
+- Python 3.9 or higher
+- Node.js 18 or higher (24.x LTS recommended)
+- Docker Desktop (optional, for backend services)
+
+#### Step 1: Clone Repository
 
 ```bash
 git clone https://github.com/prateek780/qsimnotebookfinal
 cd qsimnotebookfinal
 ```
 
-### Step 3: Start Docker Backend
-
-> **Important:** Make sure Docker Desktop is running first!
+#### Step 2: Install Python Dependencies
 
 ```bash
-docker-compose up -d
+# Install quantum computing dependencies
+pip install -r quantum_requirements.txt
+
+# Install additional dependencies
+pip install -r requirements.txt
+
+# Install AI extension dependencies
+pip install faiss-cpu
 ```
 
-**Wait for:** `Student BB84 implementation detected and ready`
+#### Step 3: Build AI Extension (Optional but Recommended)
+
+```bash
+# Navigate to extension directory
+cd .plugins/edu_agent_plugin
+
+# Install Node.js dependencies
+npm install
+
+# Install Python package
+pip install -e .
+
+# Build JupyterLab extension
+python -m jupyter labextension build .
+
+# Enable server extension
+python -m jupyter server extension enable edu_agents
+
+# Return to project root
+cd ../..
+```
+
+#### Step 4: Verify Installation
+
+```bash
+# Check JupyterLab extensions
+python -m jupyter labextension list
+# Should show: edu_agents v0.1.0 enabled ok
+
+# Check server extensions
+python -m jupyter server extension list
+# Should show: edu_agents 0.1.0 ok
+```
+
+#### Step 5: Start JupyterLab
+
+```bash
+# If jupyter command is available
+jupyter lab
+
+# Or use Python module syntax
+python -m jupyter lab
+```
 
 ---
 
 ## Getting Started
 
-### Option 1: Using JupyterLab (Recommended with AI Assistant)
+### Option A: Using Docker (Simplest)
 
-#### Step 1: Start JupyterLab
+**Step 1: Start JupyterLab**
+```bash
+docker-compose -f docker-compose.jupyter.yaml up -d
+```
 
-Open your terminal/command prompt in the project directory and run:
+**Step 2: Open Browser**
+- Navigate to: http://localhost:8888
+- JupyterLab interface will load
+
+**Step 3: Open Notebook**
+- In file browser (left sidebar), double-click `qsimnotebook.ipynb`
+
+**Step 4: Activate AI Assistant**
+- Look for **edu_agents** icon in left sidebar
+- Click to open AI coding assistant panel
+
+---
+
+### Option B: Using Local Installation
+
+#### Step 1: Start Backend Services (Optional)
+
+If using the full simulation backend:
 
 ```bash
-jupyter lab
+# Make sure Docker Desktop is running
+docker-compose up -d
+```
+
+Wait for: `Student BB84 implementation detected and ready`
+
+**Or skip this if only using notebooks.**
+
+#### Step 2: Start JupyterLab
+
+Open terminal in project directory:
+
+```bash
+# Windows
+python -m jupyter lab
+
+# Linux/Mac
+python3 -m jupyter lab
 ```
 
 **What Happens:**
-- JupyterLab will start on `http://localhost:8888`
-- Your browser will automatically open
-- You'll see the JupyterLab interface with file browser on the left
+- JupyterLab starts on `http://localhost:8888`
+- Browser automatically opens
+- JupyterLab interface appears
 
-#### Step 2: Open the Notebook
+#### Step 3: Open the Notebook
 
 1. In the **file browser** (left sidebar), locate `qsimnotebook.ipynb`
 2. **Double-click** the file to open it
-3. The notebook will open in the main area
+3. Notebook opens in the main area
 
-#### Step 3: Activate the AI Code Assistant
+#### Step 4: Activate the AI Code Assistant
 
-Look at the **right sidebar** of JupyterLab. You should see:
+Look at the **left sidebar** of JupyterLab. You should see:
 
-**QKD Code Assistant** panel with:
+**edu_agents icon** (chat/assistant icon)
+
+Click it to open the AI assistant panel.
+
+**QKD Code Assistant** panel features:
 - Chat interface
 - Input box at the bottom
 - "Ask me to generate BB84/B92 code or explain concepts..." placeholder
+- Context-aware help for quantum concepts
 
 **If you don't see it:**
-1. Click the **puzzle piece icon** (🧩) on the right sidebar
-2. The AI assistant panel should appear
+1. Click the **edu_agents icon** in the left sidebar
+2. Or check: View → Show edu_agents
+3. Verify extension is installed: `jupyter labextension list`
 
-#### Step 4: Using the AI Assistant
+---
 
-The AI assistant can help you with:
+## Using the AI Code Assistant (edu_agents)
 
-**✅ Generate Code:**
+### What is edu_agents?
+
+The **edu_agents** extension is a JupyterLab plugin that provides:
+- 🤖 **AI Coding Assistant** - Context-aware code generation
+- 💬 **Interactive Chat** - Ask questions while coding
+- 📚 **Concept Explanations** - Understand quantum networking
+- 🔍 **Code Analysis** - Debug and improve your implementations
+- 🎯 **Lab Guidance** - Hints for exercises
+- ☁️ **Firebase-backed** - Cloud-connected AI features
+
+### How to Use the AI Assistant
+
+#### Step 1: Load the Magic Extension
+
+**IMPORTANT:** Run this cell FIRST before any `%%vibe_code` cells:
+
+```python
+# Load vibe_magic extension
+import vibe_magic
+from IPython import get_ipython
+ipython = get_ipython()
+vibe_magic.load_ipython_extension(ipython)
+print("✅ Vibe Code Magic: Loaded")
+```
+
+**You should see:** `✅ Vibe Code Magic: Loaded`
+
+#### Step 2: Using %%vibe_code Cells
+
+The `%%vibe_code` magic automatically:
+- ✅ Validates your syntax
+- ✅ Executes the code
+- ✅ Saves to `student_bb84_impl.py` or `student_b92_impl.py`
+- ✅ Tracks in Firebase
+- ✅ Monitors for changes
+
+**Important Rules:**
+1. `%%vibe_code` **MUST be the first line** of the cell
+2. **No comments or code before it**
+3. Load the magic extension first (see Step 1)
+
+**Example:**
+
+```python
+%%vibe_code
+import random
+
+
+class StudentQuantumHost:
+    def __init__(self, name):
+        self.name = name
+        self.random_bits = []
+        self.measurement_bases = []
+        self.quantum_states = []
+        self.received_bases = []
+        self.measurement_outcomes = []
+        print(f"StudentQuantumHost '{self.name}' initialized successfully!")
+```
+
+**Output:**
+```
+VIBE CODE: Automatic Save & Track
+============================================================
+[1/4] Checking tracker...
+Student ID: your_id
+[2/4] Validating syntax...
+Syntax valid
+Protocol detected: BB84
+[3/4] Executing code...
+StudentQuantumHost 'Alice' initialized successfully!
+Execution successful
+[4/4] Saving and tracking...
+Saved: 12 lines, 2 methods
+File: student_bb84_impl.py
+BB84 code tracked and saved to Firebase
+============================================================
+SUCCESS: Code executed, saved, and tracked
+============================================================
+```
+
+#### Step 3: Ask AI for Help
+
+In the **edu_agents** panel (left sidebar):
+
+**Generate Code:**
 ```
 write the __init__ method for BB84
 
 def __init__(self, name):
 ```
 
-**✅ Explain Concepts:**
+**Explain Concepts:**
 ```
 explain how BB84 works
 ```
@@ -109,36 +497,25 @@ explain how BB84 works
 explain the code for bb84_send_qubits
 ```
 
-**✅ Analyze Simulation Logs:**
+**Debug Code:**
 ```
-summarize my QKD simulation logs
+why is my error rate so high?
 ```
 
-**What Gets Tracked:**
-- Every question you ask the AI
-- Every code snippet the AI generates
-- Whether you requested code or explanation
-- All stored in Firebase under your student ID
+```
+what's wrong with my measurement logic?
+```
 
----
+**Get Hints:**
+```
+give me a hint for implementing bb84_reconcile_bases
+```
 
-### Option 2: Using VS Code or Cursor
-
-1. Open VS Code or Cursor IDE
-2. **File** → **Open Folder**
-3. Select `qsimnotebookfinal` folder
-4. Locate `qsimnotebook.ipynb` file in the folder
-5. Click on the notebook file to open it
-
-> **Note:** The AI Code Assistant is only available in JupyterLab (Option 1)
-
----
-
-### Initialize Student Tracking
+#### Step 4: Initialize Student Tracking
 
 > **CRITICAL:** Run this FIRST before doing anything else!
 
-Find the **"STUDENT ACTIVITY TRACKING SETUP"** cell (Cell 1) and run it.
+Find the **"STUDENT ACTIVITY TRACKING SETUP"** cell (usually Cell 1) and run it.
 
 **What You'll See:**
 
@@ -163,14 +540,11 @@ TRACKING STARTED FOR STUDENT: your_student_id
 ```
 
 **What This Does:**
-
-- **Creates Account** - Sets up your student record in Firebase cloud database
-- **Starts Session** - Begins a new coding session with unique timestamp ID
-- **Enables Code Tracking** - Records all your code changes with timestamps
-- **Enables AI Tracking** - Logs every AI assistant interaction (questions + responses)
-- **Background Monitor** - Automatically watches for file changes every 3 seconds
-
-> **Important:** After running this cell, the AI Code Assistant in JupyterLab will automatically link to your student ID
+- **Creates Account** - Sets up your student record in Firebase
+- **Starts Session** - Begins a new session with unique timestamp
+- **Enables Code Tracking** - Records all your code changes
+- **Enables AI Tracking** - Logs every AI assistant interaction
+- **Background Monitor** - Watches for file changes every 3 seconds
 
 ---
 
@@ -180,68 +554,74 @@ TRACKING STARTED FOR STUDENT: your_student_id
 
 | Method | Purpose | What It Does |
 |--------|---------|--------------|
-| `bb84_send_qubits` | Prepare qubits | Generate random bits and bases, encode qubits, send to Bob |
-| `process_received_qbit` | Measure qubits | Receive qubit, measure in random basis, store result |
-| `bb84_reconcile_bases` | Compare bases | Find matching measurement bases between Alice and Bob |
+| `__init__` | Initialize | Set up instance variables and lists |
+| `bb84_send_qubits` | Prepare qubits | Generate random bits and bases, encode qubits |
+| `process_received_qbit` | Measure qubits | Receive qubit, measure in random basis |
+| `bb84_reconcile_bases` | Compare bases | Find matching measurement bases |
 | `bb84_estimate_error_rate` | Check security | Calculate error rate to detect eavesdropping |
 
 ---
 
 ### Complete Workflow for EACH Method
 
-#### Step-by-Step Process
+#### Using %%vibe_code (Recommended)
 
 | Step | Action | Details |
 |------|--------|---------|
-| **1** | **Read Prompt** | Review cell instructions - each cell has detailed explanation |
-| **2** | **Generate Code** | Use **QKD Code Assistant** in JupyterLab sidebar (recommended) OR your IDE's AI (Copilot/Cursor) |
-| **3** | **Save Code** | Use `%%vibe_code` magic command (auto-saves) OR manual `%save` |
-| **4** | **Track Code** | Automatic with `%%vibe_code` OR manual `notebook_tracker.track_bb84()` |
-| **5** | **Verify** | Run the visualization cell to test your implementation |
+| **1** | **Load Magic** | Run the vibe_magic loader cell FIRST |
+| **2** | **Read Prompt** | Review cell instructions |
+| **3** | **Generate Code** | Use AI assistant in sidebar OR your IDE's AI |
+| **4** | **Add to Cell** | Paste code into `%%vibe_code` cell |
+| **5** | **Run Cell** | Execute - automatically saves and tracks |
+| **6** | **Verify** | Check output for success message |
+
+**Critical Rule:** 
+```python
+%%vibe_code   # ← MUST be first line, nothing before it!
+import random  # ← Your code starts here
+
+class StudentQuantumHost:
+    # ... your implementation
+```
+
+❌ **WRONG:**
+```python
+# coding: utf-8   # ← Don't put this before %%vibe_code
+%%vibe_code
+```
+
+✅ **CORRECT:**
+```python
+%%vibe_code
+# coding: utf-8   # ← Put comments AFTER %%vibe_code
+import random
+```
 
 ---
 
-### Method 1: Using JupyterLab AI Assistant (Recommended)
+### Example: Implementing Constructor
 
-This method automatically saves and tracks your code!
+**Step 1: Read the prompt in notebook**
 
-#### STEP 1: Read the Prompt in the Notebook
-
-Each method cell contains a detailed prompt explaining what to implement.
-
-#### STEP 2: Ask the AI Assistant
-
-In the **QKD Code Assistant** panel (right sidebar), paste your prompt + skeleton function:
-
-**Example for `__init__` method:**
+**Step 2: Ask AI (in edu_agents panel):**
 ```
-Create a constructor that accepts a single parameter for the host's identifier.
-Store this identifier as an instance variable. Initialize five empty list attributes:
-one for storing random binary values, one for preparation bases, one for encoded states,
-one for measurement bases, one for measurement results.
+Create a constructor that accepts a name parameter.
+Store it as instance variable. Initialize 5 empty lists:
+random_bits, measurement_bases, quantum_states, 
+received_bases, measurement_outcomes.
+Print confirmation message.
 
 def __init__(self, name):
 ```
 
-**The AI will generate:**
-```python
-def __init__(self, name):
-    self.name = name
-    self.random_bits = []
-    self.measurement_bases = []
-    self.quantum_states = []
-    self.received_bases = []
-    self.measurement_outcomes = []
-    print(f"StudentQuantumHost '{self.name}' initialized successfully!")
-```
+**Step 3: AI generates code - copy it**
 
-#### STEP 3: Copy and Run Code in Vibe Code Cell
-
-Paste the generated code into the `%%vibe_code` cell:
+**Step 4: Put in %%vibe_code cell:**
 
 ```python
 %%vibe_code
 import random
+
 
 class StudentQuantumHost:
     def __init__(self, name):
@@ -254,172 +634,109 @@ class StudentQuantumHost:
         print(f"StudentQuantumHost '{self.name}' initialized successfully!")
 ```
 
-**Run the cell** - it will:
-- ✅ Validate syntax
-- ✅ Execute code
-- ✅ Save to `student_bb84_impl.py`
-- ✅ Track in Firebase automatically
-
-**Terminal will show:**
-```
-[AI Tracking] Using student: test123, session: abc123
-[AI Tracking] Successfully logged: xyz789
-```
+**Step 5: Run the cell** → Automatic save + track!
 
 ---
 
-### Method 2: Manual Method (VS Code/Cursor)
+### Constructor Requirements
 
-#### STEP 1: Read the Prompt
+**Critical Fix:** Use `__init__` with **DOUBLE underscores**!
 
+✅ **CORRECT:**
 ```python
-# PROMPT: Implement the bb84_send_qubits method
-# This method should:
-# 1. Generate random bits (0 or 1) for each qubit
-# 2. Generate random bases (rectilinear or diagonal)
-# 3. Encode bits in qubits using the chosen bases
-# 4. Send qubits to Bob through quantum channel
+def __init__(self, name):  # ← Double underscores before and after
 ```
 
-#### STEP 2: Write Code with Your IDE's AI
-
+❌ **WRONG:**
 ```python
-class StudentQuantumHost:
-    def __init__(self, name):
-        self.name = name
-        self.sent_bits = []
-        self.sent_bases = []
-    
-    def bb84_send_qubits(self, num_qubits):
-        """Send qubits encoded with random bits and bases"""
-        import random
-        from quantum_network import Qubit
-        
-        qubits = []
-        for i in range(num_qubits):
-            # Generate random bit and basis
-            bit = random.randint(0, 1)
-            basis = random.choice(['rectilinear', 'diagonal'])
-            
-            # Store for later comparison
-            self.sent_bits.append(bit)
-            self.sent_bases.append(basis)
-            
-            # Create and encode qubit
-            qubit = Qubit(bit, basis)
-            qubits.append(qubit)
-        
-        return qubits
+def _init_(self, name):   # ← Single underscores - won't work!
+def __init(self, name):   # ← Missing trailing underscores
+def init__(self, name):   # ← Missing leading underscores
 ```
 
-#### STEP 3: Save Your Code
-
-In a new cell, run:
-
-```python
-# Find your cell number (e.g., [8]) and run:
-%save -f student_bb84_impl.py 8
-```
-
-#### STEP 4: Track in Firebase
-
-In the next cell:
-
-```python
-import notebook_tracker
-notebook_tracker.track_bb84()
-```
-
-**Expected Output:**
-
-```
-Tracked BB84 cell: 25 lines, 687 chars
-Creating method-level snapshots for BB84:
-  > bb84_send_qubits: 18 lines
-Total methods tracked: 1
-```
-
-#### STEP 5: Wait 5 Seconds
-
-Wait before moving to the next method to allow background tracking to complete.
-
----
-
-### Progress Tracker
-
-Use this checklist as you implement:
-
-| Method | Cell # | Saved | Tracked | Notes |
-|--------|--------|-------|---------|-------|
-| `bb84_send_qubits` | ___ | ☐ | ☐ | Alice prepares qubits |
-| `process_received_qbit` | ___ | ☐ | ☐ | Bob measures qubits |
-| `bb84_reconcile_bases` | ___ | ☐ | ☐ | Compare bases |
-| `bb84_estimate_error_rate` | ___ | ☐ | ☐ | Calculate errors |
+**Why it matters:** Python only recognizes `__init__` (with double underscores) as the constructor. Any other spelling creates a regular method that doesn't get called when creating objects.
 
 ---
 
 ## Implementing B92 Protocol
 
-### The 4 Methods You'll Implement
+### The 5 Methods You'll Implement
 
 | Method | Purpose | What It Does |
 |--------|---------|--------------|
-| `b92_send_qubits` | Prepare qubits | Encode bits using only \|0⟩ or \|+⟩ states |
-| `b92_process_received_qbit` | Measure qubits | Measure in random basis, store results |
-| `b92_sifting` | Filter results | Keep only conclusive measurements |
-| `b92_estimate_error_rate` | Check security | Calculate error rate from sample |
-
----
-
-### Complete Workflow (Same as BB84)
-
-| Step | BB84 Command | B92 Command |
-|------|--------------|-------------|
-| **Save** | `%save -f student_bb84_impl.py <cell#>` | `%save -f student_b92_impl.py <cell#>` |
-| **Track** | `notebook_tracker.track_bb84()` | `notebook_tracker.track_b92()` |
+| `__init__` | Initialize | Set up instance variables for B92 |
+| `b92_prepare_qubit` | Encode bit | Map bit to quantum state (0→\|0⟩, 1→\|+⟩) |
+| `b92_measure_qubit` | Measure qubit | Randomly measure in Z or X basis |
+| `b92_sifting` | Filter results | Keep only conclusive measurements (outcome=1) |
+| `b92_send_qubits` | Send qubits | Generate bits and prepare qubits |
+| `b92_process_received_qbit` | Receive qubit | Measure and store result |
+| `b92_estimate_error_rate` | Check security | Calculate error rate |
 
 ---
 
 ### B92 Implementation Template
 
 ```python
+%%vibe_code
+import random
+
+
 class StudentB92Host:
     def __init__(self, name):
         self.name = name
         self.sent_bits = []
+        self.prepared_qubits = []
         self.received_measurements = []
+        self.sifted_key = []
+        self.random_bits = []
+        self.measurement_outcomes = []
+        self.received_bases = []
+        print(f"StudentB92Host '{self.name}' initialized successfully!")
     
-    def b92_send_qubits(self, num_qubits):
-        """Send qubits using B92 protocol (|0⟩ or |+⟩ only)"""
-        # Your implementation here
-        pass
+    def b92_prepare_qubit(self, bit):
+        """Encode bit as quantum state"""
+        if bit == 0:
+            return '|0⟩'
+        else:
+            return '|+⟩'
     
-    def b92_process_received_qbit(self, qbit, from_channel):
-        """Measure received qubit"""
-        # Your implementation here
-        pass
+    def b92_measure_qubit(self, qubit):
+        """Measure in random basis"""
+        basis = random.choice(["Z", "X"])
+        # ... measurement logic
+        return outcome, basis
     
     def b92_sifting(self, sent_bits, received_measurements):
-        """Keep only conclusive measurements"""
-        # Your implementation here
-        pass
+        """Keep only conclusive results (outcome=1)"""
+        # ... sifting logic
+        return sifted_indices, sifted_key
+    
+    def b92_send_qubits(self, num_qubits):
+        """Generate and prepare qubits"""
+        # ... preparation logic
+        return self.prepared_qubits
+    
+    def b92_process_received_qbit(self, qbit, from_channel=None):
+        """Process received qubit"""
+        # ... processing logic
+        return True
     
     def b92_estimate_error_rate(self, sample_positions, reference_bits):
         """Calculate error rate"""
-        # Your implementation here
-        pass
+        # ... error calculation
+        return error_rate
 ```
 
 ---
 
-### Progress Tracker
+### Complete Workflow (Same as BB84)
 
-| Method | Cell # | Saved | Tracked | Notes |
-|--------|--------|-------|---------|-------|
-| `b92_send_qubits` | ___ | ☐ | ☐ | Alice prepares |
-| `b92_process_received_qbit` | ___ | ☐ | ☐ | Bob measures |
-| `b92_sifting` | ___ | ☐ | ☐ | Filter results |
-| `b92_estimate_error_rate` | ___ | ☐ | ☐ | Calculate errors |
+| Step | BB84 | B92 |
+|------|------|-----|
+| **Magic Cell** | `%%vibe_code` at top | `%%vibe_code` at top |
+| **Class Name** | `StudentQuantumHost` | `StudentB92Host` |
+| **Saved To** | `student_bb84_impl.py` | `student_b92_impl.py` |
+| **Auto-Track** | Yes, if using `%%vibe_code` | Yes, if using `%%vibe_code` |
 
 ---
 
@@ -430,7 +747,7 @@ class StudentB92Host:
 After completing all methods for a protocol:
 
 1. Scroll to the **last cell** in the notebook
-2. Run the cell - this launches the QKD visualization
+2. Run the cell - launches the QKD visualization
 3. Watch your implementation execute in real-time
 4. View qubit transmission, measurement, and key generation
 
@@ -446,23 +763,23 @@ After completing all methods for a protocol:
 
 ### Understanding Your Simulation Logs
 
-All simulation runs are automatically saved to your local machine in the `simulation_logs/` folder. Each log file contains detailed information about your QKD protocol execution, including timestamps and event details.
+All simulation runs are automatically saved to `simulation_logs/` folder.
 
 **Log Location:**
 ```
 qsimnotebookfinal/simulation_logs/
-├── simulation_log_Untitled_Topology_20251020_143052.txt
-├── simulation_log_Untitled_Topology_20251020_150234.txt
+├── simulation_log_Untitled_Topology_20251028_143052.txt
+├── simulation_log_Untitled_Topology_20251028_150234.txt
 └── ...
 ```
 
 **Log File Naming:**
 - Format: `simulation_log_Untitled_Topology_YYYYMMDD_HHMMSS.txt`
 - Date/Time: Timestamp when simulation started
-- Protocol: BB84 or B92 is indicated inside the log file content
+- Protocol: BB84 or B92 indicated in file content
 
 **What's Logged:**
-- Protocol type (BB84 or B92) and simulation start time
+- Protocol type and simulation start time
 - Qubit generation and encoding details
 - Basis selection for each qubit
 - Measurement outcomes with timestamps
@@ -471,95 +788,33 @@ qsimnotebookfinal/simulation_logs/
 - Final key generation statistics
 - All network events during simulation
 
-### Ask the QKD Code Assistant About Your Logs
+### Ask the AI Assistant About Your Logs
 
-Use the **QKD Code Assistant** panel in JupyterLab (right sidebar) to analyze your simulation results.
-
-**📍 Location:** Right sidebar of JupyterLab → QKD Code Assistant panel
-
-**How to Use:**
-
-1. Type your question in the chat input
-2. The AI will analyze your logs and respond
-3. All interactions are automatically tracked in Firebase
+Use the **edu_agents** panel (left sidebar) to analyze results.
 
 **Example Prompts:**
 
 **Basic Analysis:**
 ```
 What was my error rate in the last BB84 simulation?
-```
-```
 Show me the key generation statistics from my recent run
-```
-```
 How many qubits did I send in the last simulation?
 ```
 
 **Debugging Help:**
 ```
 Why is my error rate higher than expected?
-```
-```
 Which methods failed in my last simulation?
-```
-```
 What went wrong with basis reconciliation?
 ```
 
-**Explaining Code:**
+**Comparison:**
 ```
-explain the code for bb84_send_qubits
-```
-```
-explain how BB84 basis reconciliation works
+Compare my last two BB84 simulations
+What's the difference between my BB84 and B92 performance?
 ```
 
-**Learning and Understanding:**
-```
-"Explain the measurement outcomes in my last B92 run"
-"What percentage of my bases matched with Bob?"
-"How efficient was my key generation process?"
-```
-
-**Comparison and Improvement:**
-```
-"Compare my last two BB84 simulations"
-"How can I improve my error rate?"
-"What's the difference between my BB84 and B92 performance?"
-```
-
-**Detailed Investigation:**
-```
-"Show me the first 10 qubits from my last simulation"
-"What were the basis choices for unsuccessful measurements?"
-"Analyze the pattern in my measurement errors"
-```
-
-To access your logs programmatically in the notebook:
-
-```python
-# View available log files
-import os
-log_files = sorted(os.listdir('simulation_logs'))
-print(f"Total logs: {len(log_files)}")
-for log in log_files[-5:]:  # Show last 5 logs
-    print(f"  - {log}")
-
-# Read the most recent log
-latest_log = sorted(os.listdir('simulation_logs'))[-1]
-with open(f'simulation_logs/{latest_log}', 'r') as f:
-    log_content = f.read()
-    
-# Check which protocol was used
-if 'BB84' in log_content:
-    print("Protocol: BB84")
-elif 'B92' in log_content:
-    print("Protocol: B92")
-    
-# Display first 20 lines
-print('\n'.join(log_content.split('\n')[:20]))
-```
+---
 
 ### Switching Between Protocols
 
@@ -583,13 +838,13 @@ To visualize a different protocol:
 | Data Type | Description | Example |
 |-----------|-------------|---------|
 | **Code Snapshots** | Every version of your code | Full class implementation |
-| **Timestamps** | When you wrote each method | `2024-10-14T12:35:00` |
+| **Timestamps** | When you wrote each method | `2024-10-28T12:35:00` |
 | **Lines Added** | New code you added | `+25 lines` |
 | **Lines Removed** | Code you deleted | `-3 lines` |
 | **Time Spent** | Duration per method | `8 minutes on bb84_send_qubits` |
 | **Method Evolution** | Changes to individual methods | Method-level snapshots |
 
-#### AI Interaction Tracking (JupyterLab Only)
+#### AI Interaction Tracking (With edu_agents)
 
 | Data Type | Description | Example |
 |-----------|-------------|---------|
@@ -600,7 +855,7 @@ To visualize a different protocol:
 | **Request Type** | Code generation or explanation | `CODE` or `EXPLANATION` |
 | **Protocol** | Which protocol you asked about | `BB84` or `B92` |
 | **Lines Generated** | How many lines AI wrote | `15 lines` |
-| **Timestamp** | When you asked | `2024-10-14T12:35:00` |
+| **Timestamp** | When you asked | `2024-10-28T12:35:00` |
 
 **What This Means:**
 - Every question you ask the AI is saved
@@ -613,63 +868,246 @@ To visualize a different protocol:
 ### Tracking Timeline
 
 ```
-You write code → Save file → Track in Firebase
-                                    ↓
-                    ┌───────────────────────────────┐
-                    │   FIREBASE DATABASE           │
-                    │                               │
-                    │  ✓ Code snapshot saved        │
-                    │  ✓ Timestamp recorded         │
-                    │  ✓ Line count calculated      │
-                    │  ✓ Method changes detected    │
-                    └───────────────────────────────┘
-                                    ↓
-            Background watcher (every 3 seconds)
-                    ↓
-    Creates automatic snapshots of file changes
-   ```
-
----
-
-### Firebase Data Structure
-
-**What your instructor sees:**
-
-| Field | Value |
-|-------|-------|
-| **Student ID** | `your_student_id` |
-| **Session ID** | `20241014_123456` |
-| **Protocol** | `BB84` or `B92` |
-| **Method** | `bb84_send_qubits` |
-| **Lines** | `25` |
-| **Characters** | `687` |
-| **Time Spent** | `8 minutes` |
-| **Timestamp** | `2024-10-14T12:35:00` |
+You write code → %%vibe_code executes → Auto-save & Track
+                                              ↓
+                            ┌───────────────────────────────┐
+                            │   FIREBASE DATABASE           │
+                            │                               │
+                            │  ✓ Code snapshot saved        │
+                            │  ✓ Timestamp recorded         │
+                            │  ✓ Line count calculated      │
+                            │  ✓ Method changes detected    │
+                            └───────────────────────────────┘
+                                        ↓
+                    Background watcher (every 3 seconds)
+                                        ↓
+                Creates automatic snapshots of file changes
+```
 
 ---
 
 ## Troubleshooting
 
-### Common Issues and Solutions
+### Installation Issues
 
-#### Issue 1: Tracker Not Initialized
+#### Issue: Node.js Not Found
 
-| Symptom | Solution |
-|---------|----------|
-| `Tracker not initialized` error | Run Cell 1 (tracking setup) first |
-| No Firebase connection message | Enter your student ID when prompted |
-| Session ID missing | Restart kernel and re-run Cell 1 |
+**Symptoms:**
+```
+'node' is not recognized as the name of a cmdlet
+npm install fails
+Extension build fails
+```
 
-**Fix:**
+**Solutions:**
 
-   ```python
-import notebook_tracker
-notebook_tracker.init_tracker(student_id, use_firebase=True)
-   ```
+**Windows:**
+```cmd
+winget install -e --id OpenJS.NodeJS.LTS
+# Or download from: https://nodejs.org/
+```
+
+**Linux:**
+```bash
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+sudo apt-get install -y nodejs
+```
+
+**Mac:**
+```bash
+brew install node@24
+```
+
+**Verify:**
+```bash
+node --version  # Should show v24.x.x
+npm --version   # Should show 10.x.x
+```
 
 ---
 
-#### Issue 2: Firebase Connection Slow
+#### Issue: edu_agents Extension Not Appearing
+
+**Symptoms:**
+- No AI assistant icon in JupyterLab sidebar
+- Extension not listed in `jupyter labextension list`
+
+**Solutions:**
+
+**1. Verify extension is installed:**
+```bash
+python -m jupyter labextension list
+# Should show: edu_agents v0.1.0 enabled ok
+```
+
+**2. Rebuild extension:**
+```bash
+cd .plugins/edu_agent_plugin
+npm install
+pip install -e .
+pip install faiss-cpu
+python -m jupyter labextension build .
+python -m jupyter server extension enable edu_agents
+cd ../..
+```
+
+**3. Clear JupyterLab cache:**
+```bash
+jupyter lab clean
+jupyter lab build
+```
+
+**4. Restart JupyterLab:**
+```bash
+# Stop current instance (Ctrl+C)
+# Start again
+python -m jupyter lab
+```
+
+---
+
+#### Issue: Docker Container Conflicts
+
+| Error Message | Command to Fix |
+|---------------|----------------|
+| `container name "/redis" is already in use` | `docker rm -f redis` |
+| `container name "/python-server" is already in use` | `docker rm -f python-server` |
+| `container name "/jupyter-lab-quantum" is already in use` | `docker rm -f jupyter-lab-quantum` |
+| Multiple conflicts | `docker rm -f redis python-server celery caddy redis-commander jupyter-lab-quantum` |
+
+**Complete fix:**
+
+```bash
+# Remove all conflicting containers
+docker-compose down
+
+# Remove containers forcefully
+docker rm -f redis python-server celery caddy redis-commander jupyter-lab-quantum
+
+# Start fresh
+docker-compose up -d
+
+# Or for JupyterLab only
+docker-compose -f docker-compose.jupyter.yaml up --build
+```
+
+---
+
+#### Issue: Port 8888 Already in Use
+
+**Symptoms:**
+```
+Port 8888 is already allocated
+Address already in use
+```
+
+**Solutions:**
+
+**Option 1: Stop existing Jupyter instance**
+```bash
+# Windows
+taskkill /F /IM jupyter-lab.exe
+
+# Linux/Mac
+pkill -f jupyter-lab
+```
+
+**Option 2: Use different port**
+
+Edit `docker-compose.jupyter.yaml`:
+```yaml
+ports:
+  - "9999:8888"  # Change 9999 to any free port
+```
+
+Then access at: http://localhost:9999
+
+**Option 3: Find and kill process**
+```bash
+# Windows
+netstat -ano | findstr :8888
+taskkill /PID <PID> /F
+
+# Linux/Mac
+lsof -ti:8888 | xargs kill -9
+```
+
+---
+
+#### Issue: %%vibe_code Magic Not Found
+
+**Symptoms:**
+```
+UsageError: Line magic function `%%vibe_code` not found
+UsageError: Cell magic %%vibe_code not found
+```
+
+**Solutions:**
+
+**1. Load the magic FIRST:**
+```python
+import vibe_magic
+from IPython import get_ipython
+ipython = get_ipython()
+vibe_magic.load_ipython_extension(ipython)
+print("✅ Vibe Code Magic: Loaded")
+```
+
+**2. Verify it's loaded:**
+```python
+# Check available magics
+ipython = get_ipython()
+print('vibe_code' in ipython.magics_manager.magics['cell'])
+# Should print: True
+```
+
+**3. Make sure %%vibe_code is FIRST line:**
+
+❌ Wrong:
+```python
+# coding: utf-8
+%%vibe_code
+```
+
+✅ Correct:
+```python
+%%vibe_code
+# coding: utf-8
+```
+
+**4. Restart kernel and run all cells:**
+- Kernel → Restart Kernel and Run All Cells
+- Magic will load automatically
+
+---
+
+#### Issue: Constructor Not Working
+
+**Symptoms:**
+```
+StudentQuantumHost() takes no arguments
+TypeError: __init__() missing required positional argument: 'name'
+```
+
+**Cause:** Constructor name typo
+
+❌ **Wrong:**
+```python
+def _init_(self, name):    # Single underscores
+def __init(self, name):    # Missing trailing underscores
+def init__(self, name):    # Missing leading underscores
+```
+
+✅ **Correct:**
+```python
+def __init__(self, name):  # DOUBLE underscores before AND after
+```
+
+**Fix:** Update your code with double underscores and re-run the `%%vibe_code` cell.
+
+---
+
+#### Issue: Firebase Connection Slow
 
 | Phase | Normal Time | Action If Slow |
 |-------|-------------|----------------|
@@ -681,80 +1119,41 @@ notebook_tracker.init_tracker(student_id, use_firebase=True)
 
 ---
 
-#### Issue 3: File Not Found Error
+#### Issue: Docker Build Fails
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `student_bb84_impl.py not found` | Forgot to save | Run `%save -f student_bb84_impl.py <cell#>` |
-| `student_b92_impl.py not found` | Forgot to save | Run `%save -f student_b92_impl.py <cell#>` |
-| Wrong cell number | Cell number changed | Check current cell number `[##]` |
-
-**Always save BEFORE tracking:**
-
-```python
-# 1. Save first
-%save -f student_bb84_impl.py 8
-
-# 2. Then track
-notebook_tracker.track_bb84()
-   ```
-
----
-
-#### Issue 4: Docker Container Conflicts
-
-| Error Message | Command to Fix |
-|---------------|----------------|
-| `container name "/redis" is already in use` | `docker rm -f redis` |
-| `container name "/python-server" is already in use` | `docker rm -f python-server` |
-| `container name "/celery" is already in use` | `docker rm -f celery` |
-| Multiple conflicts | `docker rm -f redis python-server celery caddy redis-commander` |
-
-**Complete fix:**
-
-   ```bash
-# Remove all conflicting containers
-docker rm -f redis python-server celery caddy redis-commander
-
-# Start fresh
-docker-compose up -d
-   ```
-
----
-
-#### Issue 5: Wrong Protocol Showing
-
-| You Want | But Seeing | Solution |
-|----------|------------|----------|
-| BB84 logs | B92 logs | `python switch_to_bb84.py` |
-| B92 logs | BB84 logs | `python switch_to_b92.py` |
-
-**To switch protocols:**
-
-```bash
-# Switch to BB84
-python switch_to_bb84.py
-
-# Switch to B92
-python switch_to_b92.py
+**Symptoms:**
+```
+Error building image
+npm install failed
+Extension build failed
 ```
 
-Then run the last cell in notebook to visualize the selected protocol.
+**Solutions:**
 
----
+**1. Check Docker has enough resources:**
+- Open Docker Desktop → Settings → Resources
+- RAM: Minimum 4GB, recommended 8GB
+- Disk: Minimum 10GB free space
 
-#### Issue 6: %save Command Not Working
+**2. Clean Docker cache:**
+```bash
+docker system prune -a
+```
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `Line magic function %save not found` | Not in Jupyter | Must run in notebook cell |
-| `UsageError` | Wrong syntax | Use: `%save -f filename.py <cell#>` |
+**3. Rebuild with no cache:**
+```bash
+docker-compose -f docker-compose.jupyter.yaml build --no-cache
+docker-compose -f docker-compose.jupyter.yaml up
+```
 
-**Correct usage:**
+**4. Check internet connection:**
+- Docker needs to download packages
+- npm needs to download dependencies
+- First build downloads ~2GB
 
-```python
-# In Jupyter notebook cell (not terminal!)
-%save -f student_bb84_impl.py 8
+**5. Check logs:**
+```bash
+docker-compose -f docker-compose.jupyter.yaml logs jupyter
 ```
 
 ---
@@ -765,18 +1164,22 @@ Then run the last cell in notebook to visualize the selected protocol.
 
 | # | Task | Command/Action | Done |
 |---|------|----------------|------|
-| **1** | Install software | `install.bat` or `install_*.sh` | ☐ |
-| **2** | Clone repository | `git clone ...` | ☐ |
-| **3** | Start Docker | `docker-compose up -d` | ☐ |
-| **4** | Start JupyterLab (recommended) | `jupyter lab` in terminal | ☐ |
-| **5** | Open notebook file | Double-click `qsimnotebook.ipynb` in file browser | ☐ |
-| **6** | Run tracking setup | Cell 1 → Enter student ID | ☐ |
-| **7** | Check AI Assistant | Look for "QKD Code Assistant" in right sidebar | ☐ |
-| **8** | Implement BB84 (4 methods) | Use AI assistant + `%%vibe_code` cells | ☐ |
-| **9** | Visualize BB84 | Run last cell in notebook | ☐ |
-| **10** | Switch to B92 | `python switch_to_b92.py` | ☐ |
-| **11** | Implement B92 (4 methods) | Use AI assistant + `%%vibe_code` cells | ☐ |
-| **12** | Visualize B92 | Run last cell in notebook | ☐ |
+| **1** | Install software | See [Installation Methods](#installation-methods) | ☐ |
+| **2** | Clone repository | `git clone <repo-url>` | ☐ |
+| **3** | Choose setup method | Docker (easiest) or Local | ☐ |
+| **4A** | Docker: Start JupyterLab | `docker-compose -f docker-compose.jupyter.yaml up -d` | ☐ |
+| **4B** | Local: Start backend (optional) | `docker-compose up -d` | ☐ |
+| **4C** | Local: Start JupyterLab | `python -m jupyter lab` | ☐ |
+| **5** | Open in browser | http://localhost:8888 | ☐ |
+| **6** | Open notebook | Double-click `qsimnotebook.ipynb` | ☐ |
+| **7** | Check AI Assistant | Look for edu_agents icon in left sidebar | ☐ |
+| **8** | Load vibe_magic | Run magic loader cell | ☐ |
+| **9** | Initialize tracking | Run Cell 1 → Enter student ID | ☐ |
+| **10** | Implement BB84 | Use `%%vibe_code` cells + AI assistant | ☐ |
+| **11** | Visualize BB84 | Run last cell in notebook | ☐ |
+| **12** | Switch to B92 | `python switch_to_b92.py` | ☐ |
+| **13** | Implement B92 | Use `%%vibe_code` cells + AI assistant | ☐ |
+| **14** | Visualize B92 | Run last cell in notebook | ☐ |
 
 ---
 
@@ -786,24 +1189,36 @@ Then run the last cell in notebook to visualize the selected protocol.
 
 | Task | Command | Notes |
 |------|---------|-------|
-| Start JupyterLab | `jupyter lab` | Opens browser automatically |
+| Start JupyterLab | `python -m jupyter lab` | Opens browser automatically |
+| Start (if path works) | `jupyter lab` | Shorter command if available |
 | Stop JupyterLab | `Ctrl+C` in terminal (twice) | Or close terminal window |
-| Restart JupyterLab | Stop, then `jupyter lab` again | Needed after extension updates |
-| Check if running | Open `http://localhost:8888/lab` | Should show JupyterLab interface |
+| Check if running | Open `http://localhost:8888` | Should show JupyterLab interface |
+| Check extensions | `jupyter labextension list` | Shows installed extensions |
+| Rebuild extensions | `jupyter lab build` | After extension changes |
 
 ---
 
 #### Docker Commands
 
+**JupyterLab Only:**
 | Task | Command |
 |------|---------|
-| Start containers | `docker-compose up -d` |
-| Stop containers | `docker-compose down` |
+| Build and start | `docker-compose -f docker-compose.jupyter.yaml up --build` |
+| Start (detached) | `docker-compose -f docker-compose.jupyter.yaml up -d` |
+| Stop | `docker-compose -f docker-compose.jupyter.yaml down` |
+| View logs | `docker-compose -f docker-compose.jupyter.yaml logs -f jupyter` |
+| Restart | `docker-compose -f docker-compose.jupyter.yaml restart` |
+| Rebuild (no cache) | `docker-compose -f docker-compose.jupyter.yaml build --no-cache` |
+
+**Full Stack:**
+| Task | Command |
+|------|---------|
+| Start all services | `docker-compose up -d` |
+| Stop all services | `docker-compose down` |
 | View running containers | `docker ps` |
 | View logs | `docker-compose logs -f` |
 | Rebuild containers | `docker-compose up --build` |
-| Remove specific container | `docker rm -f <container_name>` |
-| Remove all containers | `docker rm -f redis python-server celery caddy redis-commander` |
+| Remove all containers | `docker rm -f redis python-server celery caddy redis-commander jupyter-lab-quantum` |
 
 ---
 
@@ -819,16 +1234,17 @@ Then run the last cell in notebook to visualize the selected protocol.
 
 #### Notebook Operations
 
-**JupyterLab Method (Automatic):**
+**Using %%vibe_code (Recommended):**
 
 | Task | Command | Notes |
 |------|---------|-------|
-| Auto-save & track code | `%%vibe_code` | At top of cell with your code |
-| Ask AI for help | Type in "QKD Code Assistant" panel | Right sidebar |
+| Load magic | Run vibe_magic loader cell | FIRST, before any %%vibe_code |
+| Auto-save & track code | `%%vibe_code` at top of cell | Automatic save + track |
+| Ask AI for help | Type in edu_agents panel | Left sidebar |
 | Visualize protocol | Run last cell in notebook | Shows QKD simulation |
 | View simulation logs | Check `simulation_logs/` folder | Automatic after each run |
 
-**Manual Method (VS Code/Cursor):**
+**Manual Method (If not using %%vibe_code):**
 
 | Task | Command | Notes |
 |------|---------|-------|
@@ -836,8 +1252,6 @@ Then run the last cell in notebook to visualize the selected protocol.
 | Save B92 code | `%save -f student_b92_impl.py <cell#>` | In notebook cell |
 | Track BB84 | `notebook_tracker.track_bb84()` | After saving |
 | Track B92 | `notebook_tracker.track_b92()` | After saving |
-| Visualize protocol | Run last cell in notebook | Shows QKD simulation |
-| View simulation logs | Check `simulation_logs/` folder | Automatic after each run |
 
 ---
 
@@ -845,9 +1259,13 @@ Then run the last cell in notebook to visualize the selected protocol.
 
 | Category | Tip |
 |----------|-----|
-| **Setup** | Always run tracking setup (Cell 1) before coding |
-| **Environment** | Use JupyterLab for access to AI Code Assistant |
-| **AI Assistant** | Check right sidebar for "QKD Code Assistant" panel |
+| **Setup** | Choose Docker for easiest setup - everything included! |
+| **Installation** | Use auto-installers - they install Python + Node.js + extension |
+| **Environment** | Use JupyterLab for access to edu_agents AI Assistant |
+| **Extension** | Look for edu_agents icon in left sidebar (not right) |
+| **Magic Loading** | Always load vibe_magic FIRST before using %%vibe_code |
+| **Magic Syntax** | %%vibe_code must be THE FIRST LINE (no comments before it) |
+| **Constructor** | Use `__init__` with DOUBLE underscores (not single!) |
 | **Auto-Save** | Use `%%vibe_code` cells - they save and track automatically |
 | **AI Questions** | Copy prompt + skeleton function to AI panel for best results |
 | **AI Tracking** | All your AI questions/answers are saved to Firebase |
@@ -855,6 +1273,7 @@ Then run the last cell in notebook to visualize the selected protocol.
 | **Testing** | Run visualization (last cell) after completing all methods |
 | **Switching** | Use `python switch_to_*.py` commands to change protocols |
 | **Debugging** | Check troubleshooting section if errors occur |
+| **Logs** | Check `simulation_logs/` for detailed run information |
 
 ---
 
@@ -864,31 +1283,85 @@ Then run the last cell in notebook to visualize the selected protocol.
 
 | Question | Answer |
 |----------|--------|
-| **Do I need internet connection?** | Yes, Firebase requires internet to save your work |
-| **What if I make a mistake?** | Firebase tracks all versions - your instructor can see your progress |
-| **Can I work on BB84 and B92 simultaneously?** | No, complete BB84 first, then switch to B92 using `python switch_to_b92.py` |
-| **How do I know tracking is working?** | You'll see "Tracked BB84 cell: X lines" message or Terminal shows "[AI Tracking] Successfully logged" |
-| **What if cell numbers change?** | With `%%vibe_code`, no need to track cell numbers - it auto-saves |
+| **What's the easiest way to start?** | Use Docker! Just run: `docker-compose -f docker-compose.jupyter.yaml up --build` |
+| **Do I need to install Python manually?** | Not with Docker! With auto-installer, it's automatic. Only manual installation requires it. |
+| **Do I need Node.js?** | Only if installing locally and want the AI extension. Docker includes it. Auto-installer installs it. |
+| **Do I need internet connection?** | Yes, for Firebase tracking and AI features |
+| **What if I make a mistake?** | Firebase tracks all versions - instructor can see your progress |
+| **Can I work on BB84 and B92 simultaneously?** | No, complete BB84 first, then switch to B92 |
+| **How do I know tracking is working?** | See "SUCCESS: Code executed, saved, and tracked" after running %%vibe_code |
 | **Can I edit after tracking?** | Yes, background watcher captures all changes automatically |
 | **How do I visualize my implementation?** | Run the last cell in the notebook |
-| **What if Firebase connection is slow?** | First connection takes 10-30 seconds - this is normal |
-| **Where are my simulation logs saved?** | In `simulation_logs/` folder in your project directory |
-| **Can I delete old simulation logs?** | Yes, they're local files - but keep recent ones for analysis |
+| **Where are my simulation logs saved?** | In `simulation_logs/` folder in project directory |
 
-### JupyterLab & AI Assistant Questions
+### Docker Questions
 
 | Question | Answer |
 |----------|--------|
-| **Do I have to use JupyterLab?** | No, but it's recommended for access to the AI Code Assistant |
-| **Where is the AI Assistant?** | Right sidebar in JupyterLab → "QKD Code Assistant" panel |
-| **Can I use the AI in VS Code?** | No, the AI assistant only works in JupyterLab. Use Copilot/Cursor instead |
-| **Are my AI questions tracked?** | Yes! Every question and response is saved to Firebase |
-| **Can the instructor see my AI questions?** | Yes, all AI interactions are logged with your student ID |
+| **Do I need Docker?** | No, but highly recommended! Makes setup much easier. |
+| **What if Docker is slow?** | First build takes 5-10 minutes. Increase Docker memory to 8GB in settings. |
+| **Can I use Docker for just JupyterLab?** | Yes! Use `docker-compose.jupyter.yaml` for standalone JupyterLab |
+| **What about the backend services?** | Use full `docker-compose.yaml` if you need Redis and API server |
+| **How do I update the Docker image?** | Run: `docker-compose up --build --force-recreate` |
+| **Are my notebooks saved?** | Yes! They're mounted from your host directory - all changes persist |
+| **Can I access notebooks from outside Docker?** | Yes, they're in your project directory, shared with container |
+
+### JupyterLab & AI Extension Questions
+
+| Question | Answer |
+|----------|--------|
+| **Do I have to use JupyterLab?** | No, but recommended for edu_agents AI Assistant |
+| **Where is the AI Assistant?** | Left sidebar in JupyterLab → edu_agents icon |
+| **Can I use AI in VS Code?** | No, edu_agents only works in JupyterLab. Use Copilot/Cursor instead |
+| **Are my AI questions tracked?** | Yes! Every question and response saved to Firebase |
+| **Can instructor see my AI questions?** | Yes, all AI interactions are logged with your student ID |
 | **What if AI doesn't give good code?** | Review and fix the code - your edits are also tracked |
-| **How do I ask the AI for code?** | Copy the prompt + skeleton function from notebook, paste in AI panel |
+| **How do I ask AI for code?** | Copy prompt + skeleton from notebook, paste in AI panel |
 | **Can I ask AI to explain things?** | Yes! Ask "explain how BB84 works" or "explain this code" |
-| **What if AI panel doesn't appear?** | Click puzzle icon (🧩) on right sidebar to show it |
-| **Does AI work offline?** | No, it needs connection to Ollama server (runs on lab server) |
+| **What if AI panel doesn't appear?** | Click edu_agents icon in left sidebar |
+| **Does AI work offline?** | No, needs internet connection |
+| **What if extension build fails?** | Check Node.js is installed: `node --version` |
+
+### %%vibe_code Magic Questions
+
+| Question | Answer |
+|----------|--------|
+| **What is %%vibe_code?** | IPython cell magic that auto-saves and tracks your code |
+| **Do I have to use it?** | No, but it makes life easier - auto-save + auto-track in one step |
+| **Why "magic not found" error?** | You need to load the extension first - run the vibe_magic loader cell |
+| **Where should %%vibe_code go?** | THE FIRST LINE of the cell, nothing before it |
+| **Can I put comments before it?** | NO! Comments go AFTER %%vibe_code, not before |
+| **What about # coding: utf-8?** | Put it AFTER %%vibe_code, not before |
+| **Does it work in VS Code?** | Yes, if running Jupyter kernel in VS Code |
+| **What if it doesn't save?** | Check you have write permissions in project directory |
+| **Can I use it for B92?** | Yes! Works for both BB84 and B92 |
+
+### Code Issues
+
+| Question | Answer |
+|----------|--------|
+| **Why "takes no arguments" error?** | Constructor must be `__init__` with DOUBLE underscores, not `_init_` |
+| **What's the difference between `__init__` and `_init_`?** | `__init__` is Python constructor (double underscore). `_init_` is just a method name. |
+| **How do I know if my code is correct?** | Run %%vibe_code cell - it validates syntax before executing |
+| **What if my implementation doesn't work?** | Check simulation logs in `simulation_logs/` folder for error details |
+| **Can I test my code before visualizing?** | Yes, create test cells and call your methods directly |
+
+---
+
+## Installation Comparison
+
+| Feature | Docker | Auto-Installer | Manual |
+|---------|--------|----------------|--------|
+| **Time to Setup** | 5-10 min (first time) | 15-20 min | 30+ min |
+| **Python Install** | Automatic | Automatic | Manual |
+| **Node.js Install** | Automatic | Automatic | Manual |
+| **Extension Build** | Automatic | Automatic | Manual |
+| **Difficulty** | ⭐ Easy | ⭐⭐ Medium | ⭐⭐⭐ Advanced |
+| **Best For** | Everyone | Students | Developers |
+| **AI Extension** | ✅ Included | ✅ Included | ⚠️ Manual setup |
+| **Updates** | `docker-compose up --build` | Re-run installer | Manual |
+| **Isolation** | ✅ Containerized | ❌ System-wide | ❌ System-wide |
+| **Requirements** | Docker only | Internet | Python + Node.js |
 
 ---
 
@@ -898,21 +1371,19 @@ Then run the last cell in notebook to visualize the selected protocol.
 
 | Step | Action |
 |------|--------|
-| **1** | Install → Run platform-specific installer |
-| **2** | Clone → Get the code repository |
-| **3** | Docker → Start backend services |
-| **4** | JupyterLab → Start with `jupyter lab` |
-| **5** | Open → Double-click `qsimnotebook.ipynb` |
-| **6** | Setup → Initialize tracking with student ID |
-| **7** | AI Assistant → Check right sidebar for "QKD Code Assistant" |
-| **8** | Implement → Use AI + `%%vibe_code` for BB84 methods (4 total) |
-| **9** | Track → Automatic with each `%%vibe_code` run |
-| **10** | Visualize → Run last cell to see BB84 in action |
-| **11** | Switch → Run `python switch_to_b92.py` |
-| **12** | Implement → Use AI + `%%vibe_code` for B92 methods (4 total) |
-| **13** | Track → Automatic with each `%%vibe_code` run |
-| **14** | Visualize → Run last cell to see B92 in action |
-| **15** | Complete → All code + AI interactions tracked in Firebase |
+| **1** | **Install** → Choose: Docker (easiest) or Auto-installer or Manual |
+| **2** | **Start** → Docker: `docker-compose up` or Local: `jupyter lab` |
+| **3** | **Open** → Browser: http://localhost:8888 |
+| **4** | **Notebook** → Double-click `qsimnotebook.ipynb` |
+| **5** | **AI** → Click edu_agents icon in left sidebar |
+| **6** | **Magic** → Run vibe_magic loader cell |
+| **7** | **Tracking** → Run Cell 1, enter student ID |
+| **8** | **BB84** → Implement 4 methods using `%%vibe_code` + AI |
+| **9** | **Visualize** → Run last cell to see BB84 simulation |
+| **10** | **Switch** → Run `python switch_to_b92.py` |
+| **11** | **B92** → Implement 5 methods using `%%vibe_code` + AI |
+| **12** | **Visualize** → Run last cell to see B92 simulation |
+| **13** | **Complete** → All code + AI interactions tracked in Firebase! |
 
 ---
 
@@ -920,18 +1391,64 @@ Then run the last cell in notebook to visualize the selected protocol.
 
 | Feature | Benefit |
 |---------|---------|
-| **Automatic Tracking** | No need to manually submit - everything saves automatically to Firebase |
-| **AI Code Assistant** | Integrated AI panel helps generate and explain QKD code |
-| **AI Tracking** | Every AI interaction logged - shows how you learn |
+| **Docker Support** | One-command deployment - no dependency installation needed |
+| **Auto-Installers** | Platform-specific installers handle Python + Node.js + extensions |
+| **AI Code Assistant (edu_agents)** | Integrated AI panel helps generate and explain QKD code |
+| **Automatic Tracking** | No manual submission - everything saves to Firebase automatically |
+| **AI Interaction Tracking** | Every AI question/answer logged - shows how you learn |
 | **Version History** | All code versions preserved with timestamps |
 | **Time Analytics** | See how long you spent on each method |
 | **Real-Time Monitoring** | Instructor can see your progress live |
 | **Fair Assessment** | Your learning process is visible, not just final code |
 | **Interactive Visualization** | See your QKD implementation in action |
 | **Vibe Coding** | `%%vibe_code` cells auto-save and track in one step |
+| **Cross-Platform** | Works on Windows, Mac, Linux with Docker or installers |
+
+---
+
+## Additional Resources
+
+### Documentation Files
+
+- **INSTALLATION_GUIDE.md** - Detailed installation instructions for all platforms
+- **INSTALLER_SUMMARY.md** - Technical details about auto-installers
+- **docker-compose.jupyter.yaml** - Simplified Docker config for JupyterLab only
+- **docker-compose.yaml** - Full stack Docker config with all services
+- **README.md** - Project overview and quick links
+
+### Testing & Verification
+
+- **test-docker-build.sh** - Test Docker setup (Linux/Mac)
+- **test-docker-build.bat** - Test Docker setup (Windows)
+
+### Helper Scripts
+
+- **switch_to_bb84.py** - Switch simulation to BB84 protocol
+- **switch_to_b92.py** - Switch simulation to B92 protocol
+- **start-jupyter-docker.sh** - Quick-start JupyterLab in Docker (Linux/Mac)
+- **start-jupyter-docker.bat** - Quick-start JupyterLab in Docker (Windows)
+- **start-jupyter-docker.ps1** - Quick-start JupyterLab in Docker (PowerShell)
 
 ---
 
 **Good luck with your quantum networking lab!**
 
-> Remember: It's not just about the final code - your learning journey is tracked and valued!
+> Remember: It's not just about the final code - your learning journey (including AI interactions) is tracked and valued!
+
+---
+
+## Need Help?
+
+1. **Check Troubleshooting section** above
+2. **Read INSTALLATION_GUIDE.md** for detailed setup help
+3. **Check Docker logs:** `docker-compose logs jupyter`
+4. **Verify extensions:** `jupyter labextension list`
+5. **Ask the AI assistant** in JupyterLab sidebar
+6. **Review simulation logs** in `simulation_logs/` folder
+
+**Still stuck?** Check that:
+- ✅ Docker Desktop is running (if using Docker)
+- ✅ vibe_magic is loaded (run loader cell first)
+- ✅ `%%vibe_code` is THE FIRST LINE (nothing before it)
+- ✅ Constructor uses `__init__` with DOUBLE underscores
+- ✅ edu_agents extension is installed: `jupyter labextension list`
