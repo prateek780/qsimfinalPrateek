@@ -14,12 +14,17 @@ class PeerAgent:
     def __init__(self, 
                  db_path: str,
                  ollama_embed_model: str = 'nomic-embed-text',
-                 ollama_chat_model: str = 'codellama:7b',
+                 ollama_chat_model: str = 'deepseek-coder:6.7b',
                  ollama_base_url: str = 'http://10.80.14.216:11434'):
         """Initializes the PeerAgent's backend."""
+        
+        # Conversation history for context (last 3 Q&A pairs)
+        self.conversation_history = []
+        self.max_history = 3
         self.db_manager = VectorDBManager(path=db_path, ollama_model=ollama_embed_model)
         self.ollama_chat_model = ollama_chat_model
         self.ollama_api_url = f"{ollama_base_url}/api/generate"
+        print(f"🤖 AI Agent using model: {ollama_chat_model} at {ollama_base_url}")
 
     def _call_ollama_llm(self, prompt: str) -> str:
         """Calls the Ollama API to get a response from the chat model."""
@@ -29,9 +34,14 @@ class PeerAgent:
                 "prompt": prompt,
                 "stream": False 
             }
-            response = requests.post(self.ollama_api_url, json=payload)
+            # Set reasonable timeouts: 10s to connect, 120s to receive response
+            response = requests.post(self.ollama_api_url, json=payload, timeout=(10, 120))
             response.raise_for_status()
             return response.json().get("response", "Sorry, I couldn't come up with a response.")
+        except requests.exceptions.Timeout:
+            error_message = f"Timeout connecting to Ollama at {self.ollama_api_url}. The server took too long to respond."
+            print(error_message)
+            return error_message
         except requests.exceptions.RequestException as e:
             error_message = f"Error calling Ollama API: {e}. Please ensure Ollama is running and the model '{self.ollama_chat_model}' is pulled."
             print(error_message)
@@ -86,68 +96,98 @@ class PeerAgent:
             # Parse the code into an AST
             tree = ast.parse(code)
             
-            # Use ast.unparse (Python 3.9+) to reformat
+            # Use ast.unparse (Python 3.9+) to reformat with proper indentation
             try:
-                formatted_code = ast.unparse(tree)
+                import astunparse
+                # Try using astunparse for better formatting
+                formatted_code = astunparse.unparse(tree)
                 return formatted_code.strip()
-            except AttributeError:
-                # Python < 3.9, fall back to manual formatting
-                pass
-        except SyntaxError:
-            # Code has syntax errors, try to fix common issues
-            pass
+            except (ImportError, AttributeError):
+                # If astunparse not available, try ast.unparse
+                try:
+                    formatted_code = ast.unparse(tree)
+                    return formatted_code.strip()
+                except AttributeError:
+                    # Python < 3.9, use manual formatting
+                    pass
+        except SyntaxError as e:
+            # Code has syntax errors, continue to fallback
+            print(f"Warning: Code has syntax errors, using fallback formatting: {e}")
         
-        # Step 4: Fallback - Manual line-by-line formatting for single-line code
-        # This handles the case where CodeLlama outputs everything on one line
+        # Step 4: IMPROVED Fallback - Force multi-line formatting
+        formatted = code
         
-        # First, ensure there's a space after colons if missing
-        code = re.sub(r':(\S)', r': \1', code)
+        # CRITICAL: Split single-line code by adding newlines after colons and before keywords
         
-        # Add newlines after statement-ending patterns
-        # Pattern: after def line's colon
-        code = re.sub(r'(def\s+\w+\([^)]*\):)\s*', r'\1\n    ', code)
+        # Add newline after function definition colon
+        formatted = re.sub(r'(def\s+\w+\([^)]*\):)\s*', r'\1\n    ', formatted)
         
-        # Pattern: Split statements that should be on separate lines
-        # This is a simplified approach - split by common keywords
-        formatted_lines = []
-        current_line = ""
+        # Add newline before 'if' statements (but not elif)
+        formatted = re.sub(r'(?<!\bel)(\bif\b)', r'\n    \1', formatted)
+        
+        # Add newline before 'elif' statements
+        formatted = re.sub(r'(\belif\b)', r'\n    \1', formatted)
+        
+        # Add newline and indent before 'else:' and after its colon
+        formatted = re.sub(r'(\belse:)\s*', r'\n    \1\n        ', formatted)
+        
+        # Add newline before 'for' loops
+        formatted = re.sub(r'(\bfor\b)', r'\n    \1', formatted)
+        
+        # Add newline before 'while' loops  
+        formatted = re.sub(r'(\bwhile\b)', r'\n    \1', formatted)
+        
+        # Add newline after colon in control structures (if/elif/for/while)
+        formatted = re.sub(r'((?:if|elif|for|while)\s+[^:]+:)\s*(?!\n)', r'\1\n        ', formatted)
+        
+        # Add newline before 'return' statements
+        formatted = re.sub(r'(?<!\n)\s+(\breturn\b)', r'\n    \1', formatted)
+        
+        # Add newline before 'print(' statements
+        formatted = re.sub(r'(?<!\n)\s+(print\()', r'\n    \1', formatted)
+        
+        # Add newline before variable assignments (but not in function params)
+        formatted = re.sub(r'(?<!\n)\s+(\w+\s*=\s*(?!.*\):))', r'\n    \1', formatted)
+        
+        # Add newline before self.variable assignments
+        formatted = re.sub(r'(?<!\n)\s+(self\.\w+\s*=)', r'\n    \1', formatted)
+        
+        # Add newline before .append() calls
+        formatted = re.sub(r'(?<!\n)\s+((?:self\.)?\w+\.append\()', r'\n    \1', formatted)
+        
+        # Add newline before 'raise' statements
+        formatted = re.sub(r'(?<!\n)\s+(\braise\b)', r'\n    \1', formatted)
+        
+        # Step 5: Fix indentation levels by parsing line by line
+        lines = formatted.split('\n')
+        corrected_lines = []
         indent_level = 0
         
-        # Split by keywords and operators that indicate new statements
-        tokens = re.split(r'(\s+def\s+|\s+if\s+|\s+elif\s+|\s+else:|\s+for\s+|\s+while\s+|\s+return\s+|\s+print\(|self\.\w+\s*=|^\s*\w+\s*=)', code)
-        
-        in_function = False
-        for i, token in enumerate(tokens):
-            token_stripped = token.strip()
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                continue
             
-            if token_stripped.startswith('def '):
-                if formatted_lines:
-                    formatted_lines.append('\n')
-                formatted_lines.append(token_stripped)
-                in_function = True
-                indent_level = 1
-            elif token_stripped.startswith(('if ', 'elif ', 'for ', 'while ')):
-                formatted_lines.append('\n' + '    ' * indent_level + token_stripped)
+            # Decrease indent for 'else:', 'elif', before adding the line
+            if stripped.startswith(('else:', 'elif ')):
+                indent_level = max(0, indent_level - 1)
+            
+            # Add line with current indentation
+            corrected_lines.append('    ' * indent_level + stripped)
+            
+            # Increase indent after lines ending with ':'
+            if stripped.endswith(':'):
                 indent_level += 1
-            elif token_stripped == 'else:':
-                indent_level -= 1
-                formatted_lines.append('\n' + '    ' * indent_level + token_stripped)
-                indent_level += 1
-            elif token_stripped.startswith('return '):
-                formatted_lines.append('\n' + '    ' * indent_level + token_stripped)
-            elif token_stripped.startswith('print(') or '=' in token_stripped:
-                formatted_lines.append('\n' + '    ' * indent_level + token_stripped)
-            elif token_stripped:
-                formatted_lines.append(token)
+            
+            # Decrease indent after return statements
+            if stripped.startswith('return '):
+                indent_level = max(0, indent_level - 1)
         
-        result = ''.join(formatted_lines)
+        result = '\n'.join(corrected_lines)
         
-        # Step 5: Clean up excessive whitespace
+        # Step 6: Clean up excessive whitespace
         while '\n\n\n' in result:
             result = result.replace('\n\n\n', '\n\n')
-        
-        # Remove trailing whitespace from each line
-        result = '\n'.join(line.rstrip() for line in result.split('\n'))
         
         return result.strip()
 
@@ -204,12 +244,12 @@ COMMON OPERATIONS:
 
 QUANTUM STATE ENCODING - COMMON MISTAKES TO AVOID:
 
-❌ WRONG - Using f-strings creates invalid states:
+ WRONG - Using f-strings creates invalid states:
     encoded_state = f"|{random_bit}⟩"          # Creates "|0⟩" or "|1⟩" but never diagonal states!
     encoded_state = f"|{random_bit + 1}⟩"      # Creates "|1⟩" or "|2⟩" (INVALID STATE!)
     state = f"|{bit}⟩" if basis == 0 else f"|{bit+1}⟩"  # Still WRONG!
 
-✅ CORRECT - Use if-else with literal string values:
+CORRECT - Use if-else with literal string values:
     if basis == 0:
         state = "|0⟩" if bit == 0 else "|1⟩"
     else:
@@ -217,22 +257,22 @@ QUANTUM STATE ENCODING - COMMON MISTAKES TO AVOID:
 
 VARIABLE NAMING - COMMON MISTAKES:
 
-❌ WRONG variable names in bb84_send_qubits:
+ WRONG variable names in bb84_send_qubits:
     random_bit = random.randint(0, 1)    # Should be: bit
     encoded_state = "..."                # Should be: state
     
-✅ CORRECT variable names:
+ CORRECT variable names:
     bit = random.randint(0, 1)
     basis = random.randint(0, 1)
     state = "|0⟩" if ...
 
 FINAL PRINT STATEMENT - COMMON MISTAKES:
 
-❌ WRONG - Using variable name or "has prepared":
+WRONG - Using variable name or "has prepared":
     print(f"{self.name} has prepared {num_qubits} qubits.")
     print(f"Prepared {len(self.quantum_states)} qubits")
     
-✅ CORRECT - Use "prepared" + len():
+ CORRECT - Use "prepared" + len():
     print(f"{self.name} prepared {len(self.quantum_states)} qubits")
 
 ===============================================================================
@@ -258,6 +298,17 @@ FINAL PRINT STATEMENT - COMMON MISTAKES:
 1. VARIABLE NAMES (MANDATORY):
    - Loop variable for reference bits: MUST be "reference_bit" (NOT "reference", "ref", "ref_bit")
    - Loop pattern: MUST be "for position, reference_bit in zip(sample_positions, reference_bits):"
+
+2. ERROR RATE CALCULATION (MANDATORY):
+   - Calculate: error_rate = error_count / comparison_count (if comparison_count > 0 else 0.0)
+   - Return value MUST be between 0.0 and 1.0 (NOT multiplied by 100)
+   - ❌ WRONG: error_rate = (error_count / comparison_count) * 100  # Don't multiply by 100!
+   - ✅ CORRECT: error_rate = error_count / comparison_count if comparison_count > 0 else 0.0
+
+3. PRINT FORMAT (MANDATORY):
+   - Multiply by 100 ONLY when printing: print(f"Error rate: {error_rate * 100:.2f}%")
+   - OR use percentage format: print(f"Error rate: {error_rate:.2%}")
+   - ❌ WRONG: print(f"Error rate: {error_rate:.2f}%")  # Missing * 100 if error_rate is 0-1
 
 ===============================================================================
 🔴 CRITICAL PROCESS_RECEIVED_QBIT MANDATORY REQUIREMENTS:
@@ -434,6 +485,21 @@ B92 VALIDATION - COMMON MISTAKES:
    MUST call: self.b92_measure_qubit(qbit)
    ❌ DO NOT call: self.measurement()  (THIS IS WRONG!)
 
+===============================================================================
+🔴 CRITICAL B92_ESTIMATE_ERROR_RATE MANDATORY REQUIREMENTS:
+===============================================================================
+
+1. ERROR RATE CALCULATION (MANDATORY):
+   - Calculate: error_rate = error_count / comparison_count (if comparison_count > 0 else 0.0)
+   - Return value MUST be between 0.0 and 1.0 (NOT multiplied by 100)
+   - ❌ WRONG: error_rate = (error_count / comparison_count) * 100  # Don't multiply by 100!
+   - ✅ CORRECT: error_rate = error_count / comparison_count if comparison_count > 0 else 0.0
+
+2. PRINT FORMAT (MANDATORY):
+   - Multiply by 100 ONLY when printing: print(f"Error rate: {error_rate * 100:.2f}%")
+   - OR use percentage format: print(f"Error rate: {error_rate:.2%}")
+   - ❌ WRONG: print(f"Error rate: {error_rate:.2f}%")  # Missing * 100 if error_rate is 0-1
+
 B92 METHOD CALLS - COMMON MISTAKES:
 
 ❌ WRONG method names:
@@ -480,6 +546,39 @@ B92 b92_estimate_error_rate - COMPLETION MESSAGE:
         
         return style_guide, variables
 
+    def _detect_followup_question(self, query: str) -> bool:
+        """Detect if this is a follow-up question referencing previous context"""
+        followup_indicators = [
+            'this', 'that', 'these', 'those', 'it', 'they', 'them',
+            'what about', 'how about', 'also', 'and', 'but',
+            'more', 'another', 'again', 'same', 'the log', 'the code',
+            'previous', 'above', 'earlier', 'before', 'last'
+        ]
+        query_lower = query.lower()
+        
+        # If query is very short AND contains followup words, likely a followup
+        is_short = len(query.split()) < 10
+        has_followup_word = any(word in query_lower for word in followup_indicators)
+        
+        return is_short and has_followup_word and len(self.conversation_history) > 0
+    
+    def _get_conversation_context(self) -> str:
+        """Get formatted conversation history for context"""
+        if not self.conversation_history:
+            return ""
+        
+        context = "\n\nPREVIOUS CONVERSATION (for context):\n"
+        for i, (q, a) in enumerate(self.conversation_history[-self.max_history:], 1):
+            # Truncate very long responses
+            a_preview = a[:300] + "..." if len(a) > 300 else a
+            context += f"\n[Q{i}]: {q}\n[A{i}]: {a_preview}\n"
+        
+        return context
+    
+    def clear_history(self):
+        """Clear conversation history (useful when starting new topic)"""
+        self.conversation_history = []
+
     def answer_question(self, query: str, student_progress: int, persona_prompt: str, skeleton_code: Optional[str] = None) -> str:
         """
         Answers student questions: generates QKD code, explains concepts, or summarizes logs
@@ -492,7 +591,21 @@ B92 b92_estimate_error_rate - COMPLETION MESSAGE:
         """
         query_lower = query.lower()
         
-        # PRIORITY 1: Detect if this is asking for explanation/description
+        # Check if this is a follow-up question
+        is_followup = self._detect_followup_question(query)
+        conversation_context = self._get_conversation_context() if is_followup else ""
+        
+        # PRIORITY 1: Detect if query contains actual code to explain
+        has_code_in_query = any(indicator in query for indicator in [
+            'def ', 'self.', 'return ', 'for ', 'if ', 'elif ', 'else:',
+            '```python', 'print(', '.append(', 'random.randint'
+        ])
+        
+        # Count lines that look like code
+        lines_with_code = sum(1 for line in query.split('\n') if any(x in line for x in ['def ', 'self.', '    ', 'return', 'for ', 'if ']))
+        has_substantial_code = lines_with_code >= 3  # At least 3 lines of code-like content
+        
+        # PRIORITY 2: Detect if this is asking for explanation/description
         explanation_keywords = [
             'explain', 'describe', 'what does', 'how does', 'why does',
             'tell me about', 'what is', 'can you explain', 'walk me through',
@@ -500,6 +613,9 @@ B92 b92_estimate_error_rate - COMPLETION MESSAGE:
             'describe the', 'what\'s this', 'how this', 'why this'
         ]
         is_explanation_request = any(keyword in query_lower for keyword in explanation_keywords)
+        
+        # If asking to explain AND has code, it's a CODE EXPLANATION request
+        is_code_explanation = is_explanation_request and (has_code_in_query or has_substantial_code)
         
         # PRIORITY 2: Detect explicit code generation requests
         code_generation_keywords = [
@@ -510,19 +626,39 @@ B92 b92_estimate_error_rate - COMPLETION MESSAGE:
         ]
         is_code_request = any(keyword in query_lower for keyword in code_generation_keywords)
         
-        # If asking for explanation, NEVER generate code
-        if is_explanation_request:
+        # If asking for CODE explanation (has code in query), don't generate new code
+        if is_code_explanation:
+            is_code_request = False
+            is_explanation_request = True  # Treat as explanation
+        
+        # If asking for general explanation (no code), NEVER generate code
+        if is_explanation_request and not is_code_explanation:
             is_code_request = False
         
         # If skeleton is provided, force code generation mode
         if skeleton_code:
             is_code_request = True
             is_explanation_request = False
+            is_code_explanation = False
         
-        # Detect if this is a log summary request
-        is_log_summary = any(keyword in query_lower for keyword in [
-            'log', 'summary', 'summarize', 'analyze', 'what happened'
-        ]) and 'error' not in query_lower  # Don't confuse with error_rate code requests
+        # Detect if this is a log summary request (looking at simulation logs)
+        log_keywords = [
+            'log', 'logs', 'simulation log', 'execution log',
+            'summarize', 'analyze', 'what happened', 'interpret',
+            'simulationeventtype', 'packet_transmitted', 'data_received',
+            'qkd_initialized', 'shared_key_generated',
+            'explain this simulation', 'explain these logs', 'what do these logs',
+            'parse', 'read these logs', 'understand the logs',
+            'bases matched', 'qubits sent', 'qubits received',
+            'protocol completed', 'transmission', 'reconciliation'
+        ]
+        
+        # Check if query contains log indicators AND not asking for code generation
+        contains_log_keywords = any(keyword in query_lower for keyword in log_keywords)
+        contains_log_data = '[' in query and ']' in query and 'SimulationEventType' in query
+        
+        # If it looks like actual log data is pasted, it's definitely a log analysis
+        is_log_summary = (contains_log_keywords or contains_log_data) and not is_code_request
         
         # Detect protocol
         is_bb84 = 'bb84' in query_lower or 'studentquantumhost' in query_lower
@@ -544,6 +680,10 @@ CRITICAL OUTPUT RULES:
 4. End with the return statement - nothing after
 5. NO text before or after the method definition
 6. FOLLOW THE EXACT CODE PATTERNS AND VARIABLE NAMES specified below
+7. ⚠️ FORMATTING: Each statement MUST be on a separate line with proper 4-space indentation
+   - DO NOT put multiple statements on one line
+   - Every print(), assignment, append(), if/elif/else, for/while, return MUST be on its own line
+   - Use proper newlines between logical sections
 
 ABSOLUTELY FORBIDDEN:
 - No ``` or markdown blocks
@@ -554,6 +694,7 @@ ABSOLUTELY FORBIDDEN:
 - No explanatory comments outside the method body
 - NO double braces {{}} in f-strings (use single braces {{}})
 - NO f-string interpolation for quantum states (use if-else with string literals)
+- ❌ NO single-line code - each statement must have its own line
 
 {style_guide}
 
@@ -586,6 +727,10 @@ CRITICAL OUTPUT RULES:
 3. End with the return statement - nothing after
 4. NO text before or after the method definition
 5. FOLLOW THE EXACT CODE PATTERNS AND VARIABLE NAMES specified below
+6. ⚠️ FORMATTING: Each statement MUST be on a separate line with proper 4-space indentation
+   - DO NOT put multiple statements on one line
+   - Every print(), assignment, append(), if/elif/else, for/while, return MUST be on its own line
+   - Use proper newlines between logical sections
 
 ABSOLUTELY FORBIDDEN:
 - No ``` or markdown blocks
@@ -596,6 +741,7 @@ ABSOLUTELY FORBIDDEN:
 - No explanatory comments outside the method body
 - NO double braces {{}} in f-strings (use single braces {{}})
 - NO f-string interpolation for quantum states (use if-else with string literals)
+- ❌ NO single-line code - each statement must have its own line
 
 {style_guide}
 
@@ -618,19 +764,95 @@ Output ONLY the method definition starting with "def" and ending with "return":"
             
         elif is_log_summary:
             # Log analysis mode
-            prompt = f"""You are a quantum network simulation expert analyzing QKD protocol execution logs.
+            prompt = f"""You are a friendly quantum network simulation expert helping students understand QKD protocol execution logs.
 
-Provide a structured analysis covering:
-1. Protocol identified (BB84 or B92)
-2. Qubit transmission (how many sent/received)
-3. Basis reconciliation or sifting results
-4. Error rate calculation
-5. Security assessment
-6. Any anomalies or issues detected
+📋 HOW TO ANALYZE SIMULATION LOGS:
+
+STEP 1: IDENTIFY THE PROTOCOL
+- Look for "BB84" or "B92" in the log messages
+- BB84 uses: bb84_send_qubits(), bb84_reconcile_bases(), bb84_estimate_error_rate()
+- B92 uses: b92_send_qubits(), b92_sifting(), b92_estimate_error_rate()
+
+STEP 2: EXTRACT KEY INFORMATION FROM LOGS
+Parse these important events (ignore others):
+
+For BB84 Protocol:
+✓ "Starting with X qubits" → Number of qubits prepared
+✓ "Sent X qubits using bb84_send_qubits()" → Transmission complete
+✓ "Received qubit X/Y" → Bob receiving qubits (count how many)
+✓ "Found X matching bases (Y% efficiency)" → Basis reconciliation results
+✓ "Error rate X%" → Security check result
+✓ "BB84 QKD protocol completed successfully" → Protocol finished
+
+For B92 Protocol:
+✓ "preparing to send X qubits using B92 protocol" → Number of qubits prepared
+✓ "prepared X qubits successfully" → Transmission complete
+✓ "Conclusive results: X" → Sifting results (how many kept)
+✓ "Sifting efficiency: X%" → How many qubits survived sifting
+✓ "Error rate: X%" → Security check result
+✓ "B92 error rate estimation complete" → Protocol finished
+
+STEP 3: EXPLAIN IN SIMPLE TERMS
+Structure your answer like this:
+
+**What Happened:**
+- Which protocol ran (BB84 or B92)
+- How many qubits Alice sent to Bob
+
+**Key Results:**
+- For BB84: How many bases matched, what percentage
+- For B92: How many qubits passed sifting (outcome=1)
+- Error rate percentage and what it means
+
+**Security Assessment:**
+- If error rate < 11%: ✅ "Secure channel, safe to use key"
+- If error rate 11-25%: ⚠️ "Some noise detected, borderline secure"
+- If error rate > 25%: ❌ "Too many errors, possible eavesdropper!"
+
+**What This Means for the Student:**
+- Explain why the numbers make sense
+- Point out if their code worked correctly
+- Mention any unusual patterns
+
+IMPORTANT RULES:
+1. Use simple language - avoid jargon
+2. Focus ONLY on the information actually present in the logs
+3. If logs are incomplete, say "The logs show..." and work with what's there
+4. Use emojis (✅ ❌ ⚠️ 📊) to make it engaging
+5. Keep explanations under 300 words unless student asks for details
+6. If student asks follow-up questions, answer based on the same logs
+
+EXAMPLE ANALYSIS:
+Student shows logs with:
+- "Starting with 16 qubits"
+- "Found 7 matching bases (43.8% efficiency)"
+- "Error rate 50.0%"
+
+Your response:
+"📊 **BB84 Protocol Summary**
+
+**What Happened:**
+Alice and Bob tried to create a shared secret key using the BB84 protocol. Alice sent 16 qubits to Bob.
+
+**Key Results:**
+- **Matching Bases:** 7 out of 16 (43.8%)
+  This is normal! In BB84, you expect about 50% of bases to match by random chance.
+  
+- **Error Rate:** 50.0%
+  ❌ This is very high! Normally, we expect under 11% for a secure channel.
+
+**Security Assessment:**
+This error rate suggests either:
+1. Strong noise/interference in the quantum channel
+2. A possible eavesdropper (Eve) trying to intercept
+3. An issue with the measurement code
+
+**What This Means:**
+Your code is running correctly (the protocol completed), but the high error rate means the key shouldn't be used for encryption. In a real system, Alice and Bob would abort and try again later."{conversation_context}
 
 Student's log query: {query}
 
-Analysis:"""
+Your Analysis:"""
             
         else:
             # Explanation mode with optional RAG context
@@ -639,7 +861,73 @@ Analysis:"""
             )
             context_str = "\n\n".join(context_chunks)
 
-            if context_str:
+            # SPECIFIC PROMPT FOR CODE EXPLANATIONS
+            if is_code_explanation:
+                prompt = f"""{persona_prompt}
+
+🔍 CODE EXPLANATION MODE - The student has provided code and wants it explained.
+
+🚨 CRITICAL RULES - READ CAREFULLY:
+1. ⚠️ EXPLAIN ONLY THE CODE THE STUDENT PROVIDED - DO NOT generate new code examples
+2. ⚠️ DO NOT provide Qiskit examples, Bell states, or unrelated implementations
+3. ⚠️ DO NOT give generic BB84/B92 protocol lectures - focus on THIS specific code
+4. Explain what each line of the PROVIDED code does - nothing more, nothing less
+
+REQUIRED STRUCTURE:
+**What this method does:**
+[1-2 sentence summary of what the provided code accomplishes]
+
+**Line-by-line explanation:**
+- **Lines X-Y:** [Explain what these lines do]
+- **Line Z:** [Explain this specific line]
+- Continue for all parts of the code
+
+**Key points:**
+- [Important variable or concept #1]
+- [Important variable or concept #2]
+
+**Return value:** [What it returns and why]
+
+EXAMPLE (if student provides bb84_send_qubits code):
+```
+**What this method does:**
+This method prepares qubits for BB84 by randomly generating bits and bases, then encoding them as quantum states.
+
+**Line-by-line explanation:**
+- **Lines 1-3:** Initialize three empty lists to store random bits, measurement bases, and quantum states
+- **Line 4:** Print a message showing how many qubits Alice is preparing
+- **Lines 5-6:** Loop to prepare each qubit
+- **Lines 7-8:** Generate random bit (0 or 1) and random basis (0 or 1)
+- **Lines 9-12:** Encode quantum state based on bit and basis using if-else
+- **Lines 13-15:** Append the bit, basis, and state to their respective lists
+- **Line 16:** Print confirmation of how many qubits were prepared
+- **Line 17:** Return the list of quantum states
+
+**Key points:**
+- `bit`: 0 or 1, the classical information to encode
+- `basis`: 0 means rectilinear (Z), 1 means diagonal (X)
+- Encoding: basis 0 → |0⟩ or |1⟩, basis 1 → |+⟩ or |-⟩
+
+**Return value:** Returns `self.quantum_states` list containing strings like "|0⟩", "|1⟩", "|+⟩", "|-⟩"
+```
+
+❌ FORBIDDEN:
+- DO NOT write new code examples (like Qiskit circuits)
+- DO NOT explain general BB84 protocol steps
+- DO NOT talk about EPR pairs, Bell states unless in the student's code
+- DO NOT provide implementation suggestions unless asked
+
+✅ ALLOWED:
+- Explain exactly what the student's code does
+- Clarify variable names and their purpose
+- Explain the logic flow of the provided code{conversation_context}
+
+Student's code to explain: {query}
+
+Provide a focused explanation of THIS code:"""
+            
+            elif context_str:
+                # General explanation with course context
                 prompt = f"""{persona_prompt}
 
 Relevant course materials:
@@ -647,15 +935,28 @@ Relevant course materials:
 {context_str}
 ---
 
+EXPLANATION GUIDELINES:
+- If asking about QKD PROTOCOLS: Explain the protocol steps clearly
+- If asking about QUANTUM CONCEPTS: Use simple language and analogies
+- Keep it under 300 words unless more detail is requested
+- Use bullet points and formatting for clarity{conversation_context}
+
 Student question: {query}
 
-Provide a clear, friendly explanation (2-4 paragraphs). Use simple language and analogies where helpful:"""
+Provide a clear, friendly explanation:"""
             else:
+                # General explanation without course context
                 prompt = f"""{persona_prompt}
 
+EXPLANATION GUIDELINES:
+- If asking about BB84 or B92: Explain the protocol steps clearly
+- If asking about QUANTUM CONCEPTS: Use simple language and analogies  
+- Keep explanations concise (2-4 paragraphs) unless more detail is requested
+- Use examples when helpful{conversation_context}
+
 Student question: {query}
 
-Provide a clear, friendly explanation (2-4 paragraphs) based on quantum key distribution concepts:"""
+Provide a clear, friendly explanation based on quantum key distribution concepts:"""
         
         # Get response from Ollama
         response = self._call_ollama_llm(prompt)
@@ -665,6 +966,13 @@ Provide a clear, friendly explanation (2-4 paragraphs) based on quantum key dist
             response = self._format_code_output(response)
             # Format as clean code block without extra notes
             response = "```python\n" + response + "\n```"
+        
+        # Store in conversation history (for follow-up questions)
+        self.conversation_history.append((query, response))
+        
+        # Keep only last N conversations
+        if len(self.conversation_history) > self.max_history:
+            self.conversation_history = self.conversation_history[-self.max_history:]
         
         return response
 
@@ -744,17 +1052,30 @@ class PeerAgentUI:
             icon='code',
             layout=widgets.Layout(width='200px', height='auto')
         )
+        
+        self.clear_history_button = widgets.Button(
+            description="New Topic",
+            button_style='warning',
+            tooltip="Clear conversation history and start fresh",
+            icon='refresh',
+            layout=widgets.Layout(width='140px', height='auto')
+        )
 
         self.output_area = widgets.Output(
             layout=widgets.Layout(padding='10px', border='1px solid #fafafa', min_height='80px')
         )
         
         self.submit_button.on_click(self._on_button_clicked)
+        self.clear_history_button.on_click(self._on_clear_history_clicked)
+        
+        # Button container (submit and clear history buttons side by side)
+        button_box = widgets.HBox([self.submit_button, self.clear_history_button],
+                                   layout=widgets.Layout(width='100%', justify_content='flex-start'))
 
         self.ui_container = widgets.VBox([
             intro_html,
             self.question_area,
-            self.submit_button,
+            button_box,
             self.output_area
         ], layout=widgets.Layout(
             display='flex',
@@ -791,6 +1112,14 @@ class PeerAgentUI:
             self.submit_button.disabled = False
             self.submit_button.description = "Let's figure it out!"
             self.submit_button.icon = 'code'
+    
+    def _on_clear_history_clicked(self, b):
+        """Handles the clear history button click event."""
+        if self.agent:
+            self.agent.clear_history()
+            with self.output_area:
+                self.output_area.clear_output()
+                display(Markdown("✅ **Conversation history cleared!** You can now start a fresh topic."))
 
     def display_ui(self):
         """Renders the complete UI in the notebook."""

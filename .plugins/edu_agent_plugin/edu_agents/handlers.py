@@ -95,7 +95,6 @@ Be precise with technical details but maintain an encouraging, educational tone.
             # Log AI interaction to Firebase
             try:
                 import firebase_manager
-                import json
                 import os
                 
                 # Read tracking state from file (written by notebook when student_id is initialized)
@@ -148,8 +147,19 @@ Be precise with technical details but maintain an encouraging, educational tone.
             }))
 
         except Exception as e:
+            import traceback
+            error_details = {
+                "error": str(e),
+                "type": type(e).__name__,
+                "traceback": traceback.format_exc()
+            }
+            print(f"[ERROR] Handler exception: {error_details}")
             self.set_status(500)
-            self.finish(json.dumps({"error": str(e)}))
+            self.finish(json.dumps({
+                "message": f"Error: {str(e)}",
+                "reason": type(e).__name__,
+                "traceback": traceback.format_exc()
+            }))
 
 def setup_handlers(web_app):
     host_pattern = ".*$"
