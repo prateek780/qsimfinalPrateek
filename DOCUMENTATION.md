@@ -798,13 +798,27 @@ Ready to implement B92 methods
 
 The B92 protocol is similar to BB84 but uses only 2 quantum states instead of 4.
 
-You will implement 5 methods:
+### 📋 B92 Implementation Summary
+
+**Total Methods: 7** (2 more than BB84)
+- **BB84 had 5 methods** (constructor + 4 protocol methods)
+- **B92 has 7 methods** (constructor + 2 helper methods + 4 protocol methods + error estimation)
+
+**Why more methods?** B92 separates encoding and measuring into helper functions (`b92_prepare_qubit` and `b92_measure_qubit`) for clarity and reusability.
+
+**Estimated time:** 30-45 minutes for all 7 methods
+
+---
+
+You will implement 7 methods:
 
 1. `__init__` - Constructor
-2. `b92_send_qubits` - Alice prepares qubits
-3. `b92_process_received_qbit` - Bob measures qubits
+2. `b92_prepare_qubit` - Prepare a single qubit (encode bit as |0⟩ or |+⟩)
+3. `b92_measure_qubit` - Measure a single qubit in random basis
 4. `b92_sifting` - Filter out inconclusive measurements
-5. `b92_estimate_error_rate` - Calculate error rate
+5. `b92_send_qubits` - Alice prepares multiple qubits
+6. `b92_process_received_qbit` - Bob measures received qubits
+7. `b92_estimate_error_rate` - Calculate error rate
 
 ### Implementation Workflow
 
@@ -815,6 +829,28 @@ Follow the SAME workflow as BB84:
 3. Review generated code
 4. Paste into `%%vibe_code` cell
 5. Run cell (automatic save + track)
+
+### Recommended Implementation Order
+
+Implement B92 methods in this order for best results:
+
+```
+Step 1: __init__              ← Foundation
+         ↓
+Step 2: b92_prepare_qubit     ← Helper method (used by send_qubits)
+         ↓
+Step 3: b92_measure_qubit     ← Helper method (used by process_received_qbit)
+         ↓
+Step 4: b92_send_qubits       ← Uses prepare_qubit
+         ↓
+Step 5: b92_process_received_qbit  ← Uses measure_qubit
+         ↓
+Step 6: b92_sifting           ← Core protocol logic
+         ↓
+Step 7: b92_estimate_error_rate    ← Final verification
+```
+
+**Why this order?** Helper methods (`b92_prepare_qubit`, `b92_measure_qubit`) must be implemented before the methods that call them.
 
 ### B92 Key Differences from BB84
 
@@ -840,25 +876,31 @@ Follow the SAME workflow as BB84:
 - `self.measurement_outcomes` - Bob's outcomes
 - `self.received_bases` - Bob's basis choices
 
-#### Method 2: Send Qubits (`b92_send_qubits`)
+#### Method 2: Prepare Qubit (`b92_prepare_qubit`)
 
-**Purpose:** Alice generates random bits and encodes them as |0⟩ or |+⟩ only.
+**Purpose:** Encode a single classical bit as a quantum state.
 
-**Encoding Rules:**
-- Bit 0 → |0⟩ state
-- Bit 1 → |+⟩ state
+**Key Steps:**
+1. Validate the input bit is 0 or 1
+2. Map bit to quantum state:
+   - Bit 0 → |0⟩ state
+   - Bit 1 → |+⟩ state
+3. Return the prepared quantum state string
 
-**No basis choice** - the bit value determines the state directly.
+**Note:** Unlike BB84, B92 uses only 2 non-orthogonal states instead of 4.
 
-#### Method 3: Process Received Qubit (`b92_process_received_qbit`)
+#### Method 3: Measure Qubit (`b92_measure_qubit`)
 
-**Purpose:** Bob measures in a random basis and records the result.
+**Purpose:** Measure a single qubit in a randomly chosen basis.
 
-**Key Points:**
-- Bob chooses Z (rectilinear) or X (diagonal) basis randomly
-- Measures the qubit
-- Records both the basis and outcome
-- Does NOT know if measurement is conclusive yet
+**Key Steps:**
+1. Randomly choose measurement basis (Z or X)
+2. Measure qubit following quantum mechanics rules:
+   - **Z basis:** |0⟩ → outcome 0 (deterministic), |+⟩ → outcome 0 or 1 (random)
+   - **X basis:** |+⟩ → outcome 0 (deterministic), |0⟩ → outcome 0 or 1 (random)
+3. Return tuple of (outcome, basis)
+
+**Note:** This is a helper method used by `b92_process_received_qbit`.
 
 #### Method 4: Sifting (`b92_sifting`)
 
@@ -873,7 +915,38 @@ Follow the SAME workflow as BB84:
 
 This is the key difference from BB84 - B92 uses measurement outcomes, not basis matching.
 
-#### Method 5: Estimate Error Rate (`b92_estimate_error_rate`)
+#### Method 5: Send Qubits (`b92_send_qubits`)
+
+**Purpose:** Alice generates random bits and prepares multiple qubits for transmission.
+
+**Key Steps:**
+1. Generate `num_qubits` random bits (0 or 1)
+2. For each bit, call `b92_prepare_qubit` to encode as |0⟩ or |+⟩
+3. Store bits in `self.sent_bits`
+4. Store prepared qubits in `self.prepared_qubits`
+5. Return list of prepared qubits
+
+**Encoding Rules:**
+- Bit 0 → |0⟩ state
+- Bit 1 → |+⟩ state
+
+**No basis choice** - the bit value determines the state directly.
+
+#### Method 6: Process Received Qubit (`b92_process_received_qbit`)
+
+**Purpose:** Bob receives and measures a single qubit.
+
+**Key Steps:**
+1. Call `b92_measure_qubit` to measure in random basis
+2. Store the (outcome, basis) tuple in `self.received_measurements`
+3. Return True to confirm successful processing
+
+**Key Points:**
+- Bob chooses Z (rectilinear) or X (diagonal) basis randomly
+- Records both the basis and outcome
+- Does NOT know if measurement is conclusive yet (determined later in sifting)
+
+#### Method 7: Estimate Error Rate (`b92_estimate_error_rate`)
 
 **Same concept as BB84:**
 - Sample some positions from sifted key
@@ -881,15 +954,54 @@ This is the key difference from BB84 - B92 uses measurement outcomes, not basis 
 - Calculate error rate
 - Return percentage
 
-### Repeat for All 5 Methods
+### B92 vs BB84 Method Comparison
 
-Follow the same workflow as BB84 for each B92 method.
+| # | BB84 Method | B92 Method | Key Difference |
+|---|-------------|------------|----------------|
+| 1 | `__init__` | `__init__` | B92 uses different variable names |
+| 2 | `bb84_send_qubits` | `b92_prepare_qubit` | B92 has helper for single qubit |
+| 3 | `process_received_qbit` | `b92_measure_qubit` | B92 has helper for single measurement |
+| 4 | `bb84_reconcile_bases` | `b92_sifting` | B92 keeps outcome=1, BB84 keeps matching bases |
+| 5 | `bb84_estimate_error_rate` | `b92_send_qubits` | Similar logic, different order |
+| 6 | - | `b92_process_received_qbit` | B92 has 7 methods total |
+| 7 | - | `b92_estimate_error_rate` | Similar to BB84 version |
+
+**Note:** B92 has **7 methods** (2 more than BB84) because it separates the encoding/measuring logic into helper methods.
+
+### Repeat for All 7 Methods
+
+Follow the same workflow as BB84 for each B92 method. Take your time with the helper methods (`b92_prepare_qubit` and `b92_measure_qubit`) as they are used by the other methods.
+
+### 💡 B92 Implementation Tips
+
+**Common Mistakes to Avoid:**
+
+1. **Method Order Matters!**
+   - ❌ Don't implement `b92_send_qubits` before `b92_prepare_qubit`
+   - ✅ Implement helper methods first (they're called by other methods)
+
+2. **Sifting Logic**
+   - ❌ Don't keep all measurements (like BB84 keeps matching bases)
+   - ✅ Only keep measurements where `outcome == 1`
+
+3. **State Encoding**
+   - ❌ Don't use 4 states like BB84 (|0⟩, |1⟩, |+⟩, |−⟩)
+   - ✅ Use only 2 states: |0⟩ for bit 0, |+⟩ for bit 1
+
+4. **Measurement Outcome Interpretation**
+   - If outcome = 1 in Z basis → Alice sent |+⟩ (bit 1)
+   - If outcome = 1 in X basis → Alice sent |0⟩ (bit 0)
+
+5. **Expected Efficiency**
+   - BB84: ~50% of qubits retained after basis reconciliation
+   - B92: ~25% of qubits retained after sifting (outcome = 1)
+   - Don't worry if your B92 sifted key is shorter!
 
 ---
 
 ## Step 13: Visualize B92 Implementation
 
-After implementing all 5 B92 methods, visualize your implementation.
+After implementing all 7 B92 methods, visualize your implementation.
 
 ### Run the Last Cell
 
@@ -1359,13 +1471,15 @@ docker-compose -f docker-compose.jupyter.yaml restart
 | 21 | Check `simulation_logs/` folder for BB84 logs | ☐ |
 | 22 | Run `python switch_to_b92.py` in terminal | ☐ |
 | 23 | Implement B92 method 1 (`__init__`) | ☐ |
-| 24 | Implement B92 method 2 (`b92_send_qubits`) | ☐ |
-| 25 | Implement B92 method 3 (`b92_process_received_qbit`) | ☐ |
+| 24 | Implement B92 method 2 (`b92_prepare_qubit`) | ☐ |
+| 25 | Implement B92 method 3 (`b92_measure_qubit`) | ☐ |
 | 26 | Implement B92 method 4 (`b92_sifting`) | ☐ |
-| 27 | Implement B92 method 5 (`b92_estimate_error_rate`) | ☐ |
-| 28 | Run last cell to visualize B92 | ☐ |
-| 29 | Check `simulation_logs/` folder for B92 logs | ☐ |
-| 30 | Review all code and logs - you're done! | ☐ |
+| 27 | Implement B92 method 5 (`b92_send_qubits`) | ☐ |
+| 28 | Implement B92 method 6 (`b92_process_received_qbit`) | ☐ |
+| 29 | Implement B92 method 7 (`b92_estimate_error_rate`) | ☐ |
+| 30 | Run last cell to visualize B92 | ☐ |
+| 31 | Check `simulation_logs/` folder for B92 logs | ☐ |
+| 32 | Review all code and logs - you're done! | ☐ |
 
 ---
 
@@ -1471,7 +1585,7 @@ You have completed the setup and implementation guide for the Quantum Key Distri
 5. Implemented 5 BB84 protocol methods
 6. Visualized BB84 implementation and analyzed results
 7. Switched to B92 protocol
-8. Implemented 5 B92 protocol methods
+8. Implemented 7 B92 protocol methods (including 2 helper methods)
 9. Visualized B92 implementation and compared with BB84
 
 **What was automatically tracked:**
