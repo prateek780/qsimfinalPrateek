@@ -157,6 +157,144 @@ Installation complete!
 
 **Linux users:** Log out and log back in for docker group changes to take effect.
 
+### If Auto-Installer Doesn't Work
+
+If the automatic installer fails or you prefer manual installation, install each component separately:
+
+#### Install Python Manually
+
+**Download and install Python 3.9 or higher:**
+
+- **Windows:** https://www.python.org/downloads/windows/
+  - Download "Windows installer (64-bit)"
+  - During installation, **check "Add Python to PATH"**
+  - Recommended: Python 3.13.x or later
+  
+- **macOS:** https://www.python.org/downloads/macos/
+  - Download "macOS 64-bit universal2 installer"
+  - Run the installer package
+  - Or use Homebrew: `brew install python@3.13`
+  
+- **Linux:**
+  ```bash
+  # Ubuntu/Debian
+  sudo apt update
+  sudo apt install python3.11 python3-pip python3-venv
+  
+  # Fedora/CentOS
+  sudo dnf install python3.11 python3-pip
+  
+  # Arch Linux
+  sudo pacman -S python python-pip
+  ```
+
+**Verify Python installation:**
+```bash
+python --version
+# or
+python3 --version
+```
+
+Should show Python 3.9 or higher.
+
+#### Install Node.js Manually
+
+**Download and install Node.js 18 or higher (LTS version recommended):**
+
+- **Windows:** https://nodejs.org/en/download/
+  - Download "Windows Installer (.msi)" - 64-bit
+  - Run the installer
+  - Accept all defaults
+  
+- **macOS:** https://nodejs.org/en/download/
+  - Download "macOS Installer (.pkg)"
+  - Run the installer
+  - Or use Homebrew: `brew install node`
+  
+- **Linux:**
+  ```bash
+  # Ubuntu/Debian (using NodeSource)
+  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  sudo apt-get install -y nodejs
+  
+  # Fedora/CentOS
+  curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+  sudo dnf install -y nodejs
+  
+  # Arch Linux
+  sudo pacman -S nodejs npm
+  ```
+
+**Verify Node.js installation:**
+```bash
+node --version
+npm --version
+```
+
+Should show Node.js v18.0.0 or higher.
+
+#### Install Docker Manually
+
+**Download and install Docker Desktop:**
+
+- **Windows:** https://docs.docker.com/desktop/install/windows-install/
+  - Download "Docker Desktop for Windows"
+  - Requires Windows 10 64-bit or Windows 11
+  - May require enabling WSL 2 or Hyper-V
+  - Run the installer
+  - Restart your computer after installation
+  
+- **macOS:** https://docs.docker.com/desktop/install/mac-install/
+  - Choose your chip:
+    - **Intel chip:** Docker Desktop for Mac (Intel chip)
+    - **Apple Silicon (M1/M2/M3):** Docker Desktop for Mac (Apple Silicon)
+  - Open the .dmg file and drag Docker to Applications
+  - Launch Docker Desktop from Applications
+  
+- **Linux:** https://docs.docker.com/engine/install/
+  - Choose your distribution:
+    - **Ubuntu:** https://docs.docker.com/engine/install/ubuntu/
+    - **Debian:** https://docs.docker.com/engine/install/debian/
+    - **Fedora:** https://docs.docker.com/engine/install/fedora/
+    - **Arch:** `sudo pacman -S docker docker-compose`
+  
+  After installation:
+  ```bash
+  # Start Docker service
+  sudo systemctl start docker
+  sudo systemctl enable docker
+  
+  # Add your user to docker group (to run without sudo)
+  sudo usermod -aG docker $USER
+  
+  # Log out and log back in for changes to take effect
+  ```
+
+**Verify Docker installation:**
+```bash
+docker --version
+docker-compose --version
+```
+
+#### Install Python Dependencies Manually
+
+After installing Python, Node.js, and Docker:
+
+```bash
+# Navigate to project folder
+cd qsimnotebookfinal
+
+# Install Python packages
+pip install -r quantum_requirements.txt
+
+# Install JupyterLab extension
+cd .plugins/edu_agent_plugin
+npm install
+pip install -e .
+jupyter labextension build .
+jupyter server extension enable edu_agents
+```
+
 ---
 
 ## Step 3: Start Docker Desktop
