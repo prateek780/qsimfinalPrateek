@@ -1,16 +1,1 @@
-# Docker environment variables for quantum simulation
-REDIS_URL=redis://redis:6379/0
-CELERY_BROKER_URL=redis://redis:6379/0
-CELERY_RESULT_BACKEND=redis://redis:6379/0
 
-# Python environment
-PYTHONPATH=/app
-PYTHONUNBUFFERED=1
-
-# Application settings
-FLASK_ENV=development
-FLASK_DEBUG=1
-
-# Quantum simulation settings
-QUANTUM_SIMULATION_MODE=full
-LOG_LEVEL=INFO
